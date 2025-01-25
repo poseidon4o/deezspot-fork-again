@@ -1,5 +1,5 @@
 import traceback
-from tqdm import tqdm
+import json
 import os 
 from time import sleep
 from copy import deepcopy
@@ -294,19 +294,31 @@ class DW_ALBUM:
             if type(item) is not list:
                 c_song_metadata[key] = self.__song_metadata[key]
 
-        t = tqdm(
-            range(album.nb_tracks),
-            desc = c_song_metadata['album'],
-            disable = self.__not_interface
-        )
-
-        for a in t:
+        for a in range(album.nb_tracks):  # Replaced tqdm loop with regular loop
             for key, item in self.__song_metadata_items:
                 if type(item) is list:
                     c_song_metadata[key] = self.__song_metadata[key][a]
 
-            song = f"{c_song_metadata['music']} - {c_song_metadata['artist']}"
-            t.set_description_str(song)
+            song_name = c_song_metadata['music']
+            artist_name = c_song_metadata['artist']
+            album_name = c_song_metadata['album']
+            current_track = a + 1
+            total_tracks = album.nb_tracks
+            percentage = (current_track / total_tracks) * 100
+            percentage_rounded = round(percentage, 2)
+
+            # Print JSON progress
+            print(json.dumps({
+                "status": "progress",
+                "current_track": current_track,
+                "total_tracks": total_tracks,
+                "percentage": percentage_rounded,
+                "album": album_name,
+                "song": song_name,
+                "artist": artist_name
+            }))
+
+            song = f"{song_name} - {artist_name}"
             c_preferences = deepcopy(self.__preferences)
             c_preferences.song_metadata = c_song_metadata.copy()
             c_preferences.ids = c_song_metadata['ids']
@@ -325,65 +337,6 @@ class DW_ALBUM:
                 print(f"Track not found: {song} :(")
 
             tracks.append(track)
-
-        if self.__make_zip:
-            song_quality = tracks[0].quality
-
-            zip_name = create_zip(
-                tracks,
-                output_dir = self.__output_dir,
-                song_metadata = self.__song_metadata,
-                song_quality = song_quality,
-                method_save = self.__method_save
-            )
-
-            album.zip_path = zip_name
-
-        return album
-
-    def dw2(self) -> Album:
-        pic = self.__song_metadata['image']
-        image = request(pic).content
-        self.__song_metadata['image'] = image
-
-        album = Album(self.__ids)
-        album.image = image
-        album.nb_tracks = self.__song_metadata['nb_tracks']
-        album.album_name = self.__song_metadata['album']
-        album.upc = self.__song_metadata['upc']
-        tracks = album.tracks
-        album.md5_image = self.__ids
-        album.tags = self.__song_metadata
-
-        c_song_metadata = {}
-
-        for key, item in self.__song_metadata_items:
-            if type(item) is not list:
-                c_song_metadata[key] = self.__song_metadata[key]
-
-        t = tqdm(
-            range(album.nb_tracks),
-            desc = c_song_metadata['album'],
-            disable = True
-        )
-
-        for a in t:
-            for key, item in self.__song_metadata_items:
-                if type(item) is list:
-                    c_song_metadata[key] = self.__song_metadata[key][a]
-
-            song = f"{c_song_metadata['music']} - {c_song_metadata['artist']}"
-            t.set_description_str(song)
-            c_preferences = deepcopy(self.__preferences)
-            c_preferences.song_metadata = c_song_metadata.copy()
-            c_preferences.ids = c_song_metadata['ids']
-            c_preferences.link = f"https://open.spotify.com/track/{c_preferences.ids}"
-    
-            track = EASY_DW(c_preferences).get_no_dw_track()
-
-            tracks.append(track)
-
-        download_cli(self.__preferences)
 
         if self.__make_zip:
             song_quality = tracks[0].quality

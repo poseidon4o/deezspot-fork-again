@@ -33,6 +33,7 @@ from deezspot.libutils.utils import (
     trasform_sync_lyric,
     create_zip,
 )
+import json
 
 class Download_JOB:
 
@@ -348,40 +349,47 @@ class EASY_DW:
 			raise TrackNotFound(self.__link) from e
 
 	def download_episode_try(self) -> Episode:
-		try:
-			direct_url = self.__infos_dw.get('EPISODE_DIRECT_STREAM_URL')
-			if not direct_url:
-				raise TrackNotFound("No direct stream URL found")
+			try:
+				direct_url = self.__infos_dw.get('EPISODE_DIRECT_STREAM_URL')
+				if not direct_url:
+					raise TrackNotFound("No direct stream URL found")
 
-			os.makedirs(os.path.dirname(self.__song_path), exist_ok=True)
+				os.makedirs(os.path.dirname(self.__song_path), exist_ok=True)
 
-			response = requests.get(direct_url, stream=True)
-			print(direct_url)
-			response.raise_for_status()
+				response = requests.get(direct_url, stream=True)
+				response.raise_for_status()
 
-			total_size = int(response.headers.get('content-length', 0))
+				content_length = response.headers.get('content-length')
+				total_size = int(content_length) if content_length else None
 
-			with open(self.__song_path, 'wb') as f:
-				with tqdm(
-					total=total_size,
-					unit='iB', 
-					unit_scale=True,
-					desc=f"Downloading {self.__song_metadata['music']}"
-				) as pbar:
+				downloaded = 0
+				with open(self.__song_path, 'wb') as f:
 					for chunk in response.iter_content(chunk_size=8192):
-						size = f.write(chunk)
-						pbar.update(size)
+						if chunk:  # Filter out keep-alive chunks
+							size = f.write(chunk)
+							downloaded += size
+							percentage = None
+							if total_size and total_size > 0:
+								percentage = round((downloaded / total_size) * 100, 2)
+							progress_json = {
+								"status": "downloading",
+								"downloaded": downloaded,
+								"total": total_size,
+								"percentage": percentage,
+								"song": self.__song_metadata['music']
+							}
+							print(json.dumps(progress_json))
+				self.__c_track.success = True
+				self.__write_episode()
+				write_tags(self.__c_track)
+				return self.__c_track
 
-			self.__c_track.success = True
-			self.__write_episode()
-			write_tags(self.__c_track)
-			return self.__c_track
+			except Exception as e:
+				if isfile(self.__song_path):
+					os.remove(self.__song_path)
+				self.__c_track.success = False
+				raise TrackNotFound(f"Episode download failed: {str(e)}")
 
-		except Exception as e:
-			if isfile(self.__song_path):
-				os.remove(self.__song_path)
-			self.__c_track.success = False
-			raise TrackNotFound(f"Episode download failed: {str(e)}")
 
 
 	def __add_more_tags(self) -> None:
@@ -487,92 +495,96 @@ class DW_ALBUM:
 		self.__song_metadata_items = self.__song_metadata.items()
 
 	def dw(self) -> Album:
-		infos_dw = API_GW.get_album_data(self.__ids)['data']
-		md5_image = infos_dw[0]['ALB_PICTURE']
-		image = API.choose_img(md5_image)
-		self.__song_metadata['image'] = image
+			infos_dw = API_GW.get_album_data(self.__ids)['data']
+			md5_image = infos_dw[0]['ALB_PICTURE']
+			image = API.choose_img(md5_image)
+			self.__song_metadata['image'] = image
 
-		album = Album(self.__ids)
-		album.image = image
-		album.md5_image = md5_image
-		album.nb_tracks = self.__song_metadata['nb_tracks']
-		album.album_name = self.__song_metadata['album']
-		album.upc = self.__song_metadata['upc']
-		tracks = album.tracks
-		album.tags = self.__song_metadata
+			album = Album(self.__ids)
+			album.image = image
+			album.md5_image = md5_image
+			album.nb_tracks = self.__song_metadata['nb_tracks']
+			album.album_name = self.__song_metadata['album']
+			album.upc = self.__song_metadata['upc']
+			tracks = album.tracks
+			album.tags = self.__song_metadata
 
-		medias = Download_JOB.check_sources(
-			infos_dw, self.__quality_download
-		)
-
-		c_song_metadata = {}
-
-		for key, item in self.__song_metadata_items:
-			if type(item) is not list:
-				c_song_metadata[key] = self.__song_metadata[key]
-
-		t = tqdm(
-			range(
-				len(infos_dw)
-			),
-			desc = c_song_metadata['album'],
-			disable = self.__not_interface
-		)
-
-		for a in t:
-			for key, item in self.__song_metadata_items:
-				if type(item) is list:
-					c_song_metadata[key] = self.__song_metadata[key][a]
-
-			c_infos_dw = infos_dw[a]
-			c_infos_dw['media_url'] = medias[a]
-			song = f"{c_song_metadata['music']} - {c_song_metadata['artist']}"
-			t.set_description_str(song)
-			c_preferences = deepcopy(self.__preferences)
-			c_preferences.song_metadata = c_song_metadata.copy()
-			c_preferences.ids = c_infos_dw['SNG_ID']
-			c_preferences.link = f"https://deezer.com/track/{c_preferences.ids}"
-
-			try:
-				track = EASY_DW(c_infos_dw, c_preferences).download_try()
-			except TrackNotFound:
-				try:
-					ids = API.not_found(song, c_song_metadata['music'])
-					c_infos_dw = API_GW.get_song_data(ids)
-
-					c_media = Download_JOB.check_sources(
-						[c_infos_dw], self.__quality_download
-					)
-
-					c_infos_dw['media_url'] = c_media[0]
-
-					track = EASY_DW(c_infos_dw, c_preferences).download_try()
-				except TrackNotFound:
-					track = Track(
-						c_song_metadata,
-						None, None,
-						None, None, None,
-					)
-
-					track.success = False
-					print(f"Track not found: {song} :(")
-
-			tracks.append(track)
-
-		if self.__make_zip:
-			song_quality = tracks[0].quality
-
-			zip_name = create_zip(
-				tracks,
-				output_dir = self.__output_dir,
-				song_metadata = self.__song_metadata,
-				song_quality = song_quality,
-				method_save = self.__method_save
+			medias = Download_JOB.check_sources(
+				infos_dw, self.__quality_download
 			)
 
-			album.zip_path = zip_name
+			c_song_metadata = {}
 
-		return album
+			for key, item in self.__song_metadata_items:
+				if type(item) is not list:
+					c_song_metadata[key] = self.__song_metadata[key]
+
+			total_tracks = len(infos_dw)
+			for a in range(total_tracks):
+				track_number = a + 1
+				for key, item in self.__song_metadata_items:
+					if type(item) is list:
+						c_song_metadata[key] = self.__song_metadata[key][a]
+
+				c_infos_dw = infos_dw[a]
+				c_infos_dw['media_url'] = medias[a]
+				song = f"{c_song_metadata['music']} - {c_song_metadata['artist']}"
+				
+				# Print progress as JSON
+				progress_data = {
+					"status": "progress",
+					"current_track": track_number,
+					"total_tracks": total_tracks,
+					"percentage": round((track_number / total_tracks) * 100, 2),
+					"album": self.__song_metadata['album'],
+					"song": c_song_metadata['music'],
+					"artist": c_song_metadata['artist']
+				}
+				print(json.dumps(progress_data))
+
+				c_preferences = deepcopy(self.__preferences)
+				c_preferences.song_metadata = c_song_metadata.copy()
+				c_preferences.ids = c_infos_dw['SNG_ID']
+				c_preferences.link = f"https://deezer.com/track/{c_preferences.ids}"
+
+				try:
+					track = EASY_DW(c_infos_dw, c_preferences).download_try()
+				except TrackNotFound:
+					try:
+						ids = API.not_found(song, c_song_metadata['music'])
+						c_infos_dw = API_GW.get_song_data(ids)
+
+						c_media = Download_JOB.check_sources(
+							[c_infos_dw], self.__quality_download
+						)
+
+						c_infos_dw['media_url'] = c_media[0]
+
+						track = EASY_DW(c_infos_dw, c_preferences).download_try()
+					except TrackNotFound:
+						track = Track(
+							c_song_metadata,
+							None, None,
+							None, None, None,
+						)
+						track.success = False
+						print(f"Track not found: {song} :(")
+
+				tracks.append(track)
+
+			if self.__make_zip:
+				song_quality = tracks[0].quality if tracks else 'Unknown'
+				zip_name = create_zip(
+					tracks,
+					output_dir=self.__output_dir,
+					song_metadata=self.__song_metadata,
+					song_quality=song_quality,
+					method_save=self.__method_save
+				)
+				album.zip_path = zip_name
+
+			return album
+
 
 class DW_PLAYLIST:
 	def __init__(
@@ -665,18 +677,28 @@ class DW_EPISODE:
             output_path = os.path.join(self.__output_dir, f"{safe_filename}.mp3")
             
             response = requests.get(direct_url, stream=True)
-            total_size = int(response.headers.get('content-length', 0))
-            
+            response.raise_for_status()
+
+            content_length = response.headers.get('content-length')
+            total_size = int(content_length) if content_length else None
+
+            downloaded = 0
             with open(output_path, 'wb') as f:
-                with tqdm(
-                    total=total_size,
-                    unit='iB',
-                    unit_scale=True,
-                    desc=f"Downloading {self.__preferences.song_metadata['music']}"
-                ) as pbar:
-                    for chunk in response.iter_content(8192):
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
                         size = f.write(chunk)
-                        pbar.update(size)
+                        downloaded += size
+                        percentage = None
+                        if total_size and total_size > 0:
+                            percentage = round((downloaded / total_size) * 100, 2)
+                        progress_json = {
+                            "status": "downloading",
+                            "downloaded": downloaded,
+                            "total": total_size,
+                            "percentage": percentage,
+                            "song": self.__preferences.song_metadata['music']
+                        }
+                        print(json.dumps(progress_json))
             
             episode = Track(
                 self.__preferences.song_metadata,
