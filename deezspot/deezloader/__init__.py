@@ -192,7 +192,8 @@ class DeeLogin:
 		quality_download = stock_quality,
 		recursive_quality = stock_recursive_quality,
 		recursive_download = stock_recursive_download,
-		not_interface = stock_not_interface
+		not_interface = stock_not_interface,
+		method_save=method_save
 	) -> list[Track]:
 
 		link_is_valid(link_artist)
@@ -204,7 +205,8 @@ class DeeLogin:
 			self.download_trackdee(
 				track['link'], output_dir,
 				quality_download, recursive_quality,
-				recursive_download, not_interface
+				recursive_download, not_interface,
+				method_save=method_save
 			)
 
 			for track in playlist_json
