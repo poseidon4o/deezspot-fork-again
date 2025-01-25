@@ -117,7 +117,7 @@ def __get_dir(song_metadata, output_dir, method_save):
         if method_save == 0:
             dir_name = f"{album} - {ar_album}"
         elif method_save == 1:
-            dir_name = f"{ar_album}"
+            dir_name = f"{ar_album}/{album}"
         elif method_save == 2:
             dir_name = f"{album} - {ar_album}"
         elif method_save == 3:
