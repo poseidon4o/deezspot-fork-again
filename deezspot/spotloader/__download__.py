@@ -47,8 +47,9 @@ class EASY_DW:
         self.__method_save = preferences.method_save
         self.__song_metadata = preferences.song_metadata
         self.__not_interface = preferences.not_interface
-        self.__quality_download = preferences.quality_download or "NORMAL"  
+        self.__quality_download = preferences.quality_download or "NORMAL"
         self.__recursive_download = preferences.recursive_download
+        self.__type = "episode" if preferences.is_episode else "track"  # New type parameter
 
         self.__c_quality = qualities[self.__quality_download]
         self.__fallback_ids = self.__ids
@@ -58,7 +59,7 @@ class EASY_DW:
             self.__write_episode()
         else:
             self.__write_track()
-            
+
     def __set_quality(self) -> None:
         self.__dw_quality = self.__c_quality['n_quality']
         self.__file_format = self.__c_quality['f_format']
@@ -123,8 +124,14 @@ class EASY_DW:
         self.__song_metadata['image'] = image
         song = f"{self.__song_metadata['music']} - {self.__song_metadata['artist']}"
 
-        if not self.__not_interface:
-            print(f"Downloading: {song}")
+        # Add initial download status with type
+        print(json.dumps({
+            "status": "downloading",
+            "type": self.__type,
+            "album": self.__song_metadata['album'],
+            "song": self.__song_metadata['music'],
+            "artist": self.__song_metadata['artist']
+        }))
 
         try:
             self.download_try()
@@ -166,6 +173,15 @@ class EASY_DW:
 
             self.__convert_audio()
             self.__write_track()
+
+            # Add completion status
+            print(json.dumps({
+                "status": "done",
+                "type": self.__type,
+                "album": self.__song_metadata['album'],
+                "song": self.__song_metadata['music'],
+                "artist": self.__song_metadata['artist']
+            }))
             return self.__c_track
 
         except Exception as e:
@@ -184,6 +200,15 @@ class EASY_DW:
             if not ans in answers:
                 return self.__c_episode
 
+        # Add episode start status
+        print(json.dumps({
+            "status": "downloading",
+            "type": "episode",
+            "album": self.__song_metadata['album'],
+            "song": self.__song_metadata['music'],
+            "artist": self.__song_metadata['artist']
+        }))
+
         episode_id = EpisodeId.from_base62(self.__ids)
 
         try:
@@ -198,7 +223,6 @@ class EASY_DW:
 
         total_size = stream.input_stream.size
 
-        # Ensure the directory exists before writing the file
         os.makedirs(dirname(self.__song_path), exist_ok=True)
 
         with open(self.__song_path, "wb") as f:
@@ -208,8 +232,16 @@ class EASY_DW:
             f.write(data)
 
         self.__convert_audio()
-
         self.__write_episode()
+
+        # Add episode completion status
+        print(json.dumps({
+            "status": "done",
+            "type": "episode",
+            "album": self.__song_metadata['album'],
+            "song": self.__song_metadata['music'],
+            "artist": self.__song_metadata['artist']
+        }))
 
         return self.__c_episode
 
@@ -288,6 +320,14 @@ class DW_ALBUM:
         album.md5_image = self.__ids
         album.tags = self.__song_metadata
 
+        # Print initializing status
+        print(json.dumps({
+            "status": "initializing",
+            "type": "album",
+            "album": self.__song_metadata['album'],
+            "artist": self.__song_metadata['artist']
+        }))
+
         c_song_metadata = {}
 
         for key, item in self.__song_metadata_items:
@@ -310,13 +350,14 @@ class DW_ALBUM:
             # Print JSON progress
             print(json.dumps({
                 "status": "progress",
+                "type": "album",
                 "current_track": current_track,
                 "total_tracks": total_tracks,
                 "percentage": percentage_rounded,
                 "album": album_name,
                 "song": song_name,
                 "artist": artist_name
-            }))
+            }))  
 
             song = f"{song_name} - {artist_name}"
             c_preferences = deepcopy(self.__preferences)
@@ -351,6 +392,14 @@ class DW_ALBUM:
 
             album.zip_path = zip_name
 
+        # Print done status
+        print(json.dumps({
+            "status": "done",
+            "type": "album",
+            "album": self.__song_metadata['album'],
+            "artist": self.__song_metadata['artist']
+        }))
+
         return album
 
 class DW_PLAYLIST:
@@ -367,6 +416,18 @@ class DW_PLAYLIST:
         self.__song_metadata = self.__preferences.song_metadata
 
     def dw(self) -> Playlist:
+        # Initializing message
+        playlist_name = self.__json_data.get('name', 'unknown')
+        owner = self.__json_data.get('owner', {}).get('display_name', 'unknown')
+        total_tracks = self.__json_data.get('tracks', {}).get('total', 'unknown')
+        print(json.dumps({
+            "status": "initializing",
+            "type": "playlist",
+            "name": playlist_name,
+            "owner": owner,
+            "total_tracks": total_tracks
+        }))
+
         playlist = Playlist()
         tracks = playlist.tracks
 
@@ -393,9 +454,30 @@ class DW_PLAYLIST:
             create_zip(tracks, zip_name = zip_name)
             playlist.zip_path = zip_name
 
+        # Done message
+        print(json.dumps({
+            "status": "done",
+            "type": "playlist",
+            "name": playlist_name,
+            "owner": owner,
+            "total_tracks": total_tracks
+        }))
+
         return playlist
 
     def dw2(self) -> Playlist:
+        # Initializing message (if needed for dw2, else remove)
+        playlist_name = self.__json_data.get('name', 'unknown')
+        owner = self.__json_data.get('owner', {}).get('display_name', 'unknown')
+        total_tracks = self.__json_data.get('tracks', {}).get('total', 'unknown')
+        print(json.dumps({
+            "status": "initializing",
+            "type": "playlist",
+            "name": playlist_name,
+            "owner": owner,
+            "total_tracks": total_tracks
+        }))
+
         playlist = Playlist()
         tracks = playlist.tracks
 
@@ -423,6 +505,15 @@ class DW_PLAYLIST:
             zip_name = f"{self.__output_dir}/{playlist_title} [playlist {self.__ids}]"
             create_zip(tracks, zip_name = zip_name)
             playlist.zip_path = zip_name
+
+        # Done message
+        print(json.dumps({
+            "status": "done",
+            "type": "playlist",
+            "name": playlist_name,
+            "owner": owner,
+            "total_tracks": total_tracks
+        }))
 
         return playlist
 
