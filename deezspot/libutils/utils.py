@@ -113,15 +113,15 @@ def __get_dir(song_metadata, output_dir, method_save):
             dir_name = "Unknown Episode"
     else:
         album = var_excape(song_metadata.get('album', ''))
-        artist = var_excape(song_metadata.get('artist', ''))
+        ar_album = var_excape(song_metadata.get('ar_album', ''))
         if method_save == 0:
-            dir_name = f"{album} - {artist}"
+            dir_name = f"{album} - {ar_album}"
         elif method_save == 1:
-            dir_name = f"{artist}"
+            dir_name = f"{ar_album}"
         elif method_save == 2:
-            dir_name = f"{album} - {artist}"
+            dir_name = f"{album} - {ar_album}"
         elif method_save == 3:
-            dir_name = f"{album} - {artist}"
+            dir_name = f"{album} - {ar_album}"
         else:
             dir_name = "Unknown"
 
