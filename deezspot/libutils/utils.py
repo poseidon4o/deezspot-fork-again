@@ -161,7 +161,14 @@ def set_path(
             song_name = f"{album} CD {discnum} TRACK {tracknum}"
 
         elif method_save == 1:
-            song_name = f"{music} - {artist}"
+            # Updated block for {tracknum}. {tracktitle}
+            try:
+                tracknum = f"{int(tracknum):02d}"  # Format as two digits
+            except (ValueError, TypeError):
+                pass  # Fallback to raw value
+            tracknum_clean = var_excape(str(tracknum))
+            tracktitle_clean = var_excape(music)
+            song_name = f"{tracknum_clean}. {tracktitle_clean}"
 
         elif method_save == 2:
             isrc = song_metadata.get('isrc', '')
