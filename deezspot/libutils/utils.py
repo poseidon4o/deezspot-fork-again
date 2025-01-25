@@ -153,15 +153,13 @@ def set_path(
     else:
         album = var_excape(song_metadata.get('album', ''))
         artist = var_excape(song_metadata.get('artist', ''))
-        music = var_excape(song_metadata.get('music', ''))
+        music = var_excape(song_metadata.get('music', ''))  # Track title
+        discnum = song_metadata.get('discnum', '')
+        tracknum = song_metadata.get('tracknum', '')
 
         if method_save == 0:
-            discnum = song_metadata.get('discnum', '')
-            tracknum = song_metadata.get('tracknum', '')
             song_name = f"{album} CD {discnum} TRACK {tracknum}"
-
         elif method_save == 1:
-            # Updated block for {tracknum}. {tracktitle}
             try:
                 tracknum = f"{int(tracknum):02d}"  # Format as two digits
             except (ValueError, TypeError):
@@ -169,27 +167,23 @@ def set_path(
             tracknum_clean = var_excape(str(tracknum))
             tracktitle_clean = var_excape(music)
             song_name = f"{tracknum_clean}. {tracktitle_clean}"
-
         elif method_save == 2:
             isrc = song_metadata.get('isrc', '')
             song_name = f"{music} - {artist} [{isrc}]"
-
         elif method_save == 3:
-            discnum = song_metadata.get('discnum', '')
-            tracknum = song_metadata.get('tracknum', '')
             song_name = f"{discnum}|{tracknum} - {music} - {artist}"
 
-    # Ensure the song_name is not too long
+    # Truncate to avoid filesystem limits
     max_length = 255 - len(output_dir) - len(file_format) - len(f" ({song_quality})")
     song_name = song_name[:max_length]
 
+    # Build final path
     song_dir = __get_dir(song_metadata, output_dir, method_save)
     __check_dir(song_dir)
     n_tronc = __get_tronc(song_name)
     song_path = f"{song_dir}/{song_name[:n_tronc]} ({song_quality}){file_format}"
 
     return song_path
-
 def create_zip(
     tracks: list[Track],
     output_dir=None,
