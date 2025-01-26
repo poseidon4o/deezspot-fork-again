@@ -124,8 +124,28 @@ class API:
 		return infos
 
 	@classmethod
-	def search_track(cls, query):
+	def search(cls, query, limit=None):
+		url = f"{cls.__api_link}search/?q={query}"
+		
+		# Add the limit parameter to the URL if it is provided
+		if limit is not None:
+			url += f"&limit={limit}"
+		
+		infos = cls.__get_api(url)
+
+		if infos['total'] == 0:
+			raise NoDataApi(query)
+
+		return infos
+
+	@classmethod
+	def search_track(cls, query, limit=None):
 		url = f"{cls.__api_link}search/track/?q={query}"
+		
+		# Add the limit parameter to the URL if it is provided
+		if limit is not None:
+			url += f"&limit={limit}"
+		
 		infos = cls.__get_api(url)
 
 		if infos['total'] == 0:
@@ -134,8 +154,13 @@ class API:
 		return infos
 
 	@classmethod
-	def search_album(cls, query):
+	def search_album(cls, query, limit=None):
 		url = f"{cls.__api_link}search/album/?q={query}"
+		
+		# Add the limit parameter to the URL if it is provided
+		if limit is not None:
+			url += f"&limit={limit}"
+		
 		infos = cls.__get_api(url)
 
 		if infos['total'] == 0:
@@ -144,8 +169,13 @@ class API:
 		return infos
 
 	@classmethod
-	def search_playlist(cls, query):
+	def search_playlist(cls, query, limit=None):
 		url = f"{cls.__api_link}search/playlist/?q={query}"
+		
+		# Add the limit parameter to the URL if it is provided
+		if limit is not None:
+			url += f"&limit={limit}"
+		
 		infos = cls.__get_api(url)
 
 		if infos['total'] == 0:
@@ -154,8 +184,13 @@ class API:
 		return infos
 
 	@classmethod
-	def search_artist(cls, query):
+	def search_artist(cls, query, limit=None):
 		url = f"{cls.__api_link}search/artist/?q={query}"
+		
+		# Add the limit parameter to the URL if it is provided
+		if limit is not None:
+			url += f"&limit={limit}"
+		
 		infos = cls.__get_api(url)
 
 		if infos['total'] == 0:

@@ -71,7 +71,6 @@ class Spo:
         return episode_json
 
     @classmethod
-    def search(cls, query):
-        search = cls.__api.search(query)
-
+    def search(cls, query, search_type='track', limit=10):
+        search = cls.__api.search(q=query, type=search_type, limit=limit)
         return search
