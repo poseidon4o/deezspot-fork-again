@@ -173,6 +173,7 @@ class EASY_DW:
 
             self.__convert_audio()
             self.__write_track()
+            write_tags(self.__c_track)
 
             # Add completion status
             print(json.dumps({
@@ -233,6 +234,7 @@ class EASY_DW:
 
         self.__convert_audio()
         self.__write_episode()
+        write_tags(self.__c_episode)
 
         # Add episode completion status
         print(json.dumps({
