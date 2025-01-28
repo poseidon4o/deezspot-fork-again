@@ -206,7 +206,7 @@ def __write_ogg(song, song_metadata):
 
     # Standard Vorbis comment fields mapping
     field_mapping = {
-        'music': 'title',
+        'title': 'title',
         'artist': 'artist',
         'album': 'album',
         'tracknum': 'tracknumber',
