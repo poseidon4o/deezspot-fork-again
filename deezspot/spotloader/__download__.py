@@ -1,7 +1,7 @@
 import traceback
 import json
 import os 
-from time import sleep
+import time
 from copy import deepcopy
 from os.path import isfile, dirname
 from librespot.core import Session
@@ -144,8 +144,12 @@ class EASY_DW:
     def download_try(self) -> Track:
         song = f"{self.__song_metadata['music']} - {self.__song_metadata['artist']}"
         track_id = self.__ids
+        max_retries = 10
+        retry_delay = 30
+        retries = 0
 
         try:
+            # Check if the track already exists
             if isfile(self.__song_path) and check_track(self.__c_track):
                 if self.__recursive_download:
                     return self.__c_track
@@ -154,28 +158,51 @@ class EASY_DW:
                 if ans.lower() not in ('y', 'yes'):
                     return self.__c_track
 
-            track_id_obj = TrackId.from_base62(self.__ids)
-            stream = Download_JOB.session.content_feeder().load_track(
-                track_id_obj,
-                VorbisOnlyAudioQuality(self.__dw_quality),
-                False,
-                None
-            )
+            while True:
+                try:
+                    # Fetch the track
+                    track_id_obj = TrackId.from_base62(self.__ids)
+                    stream = Download_JOB.session.content_feeder().load_track(
+                        track_id_obj,
+                        VorbisOnlyAudioQuality(self.__dw_quality),
+                        False,
+                        None
+                    )
 
-            total_size = stream.input_stream.size
-            os.makedirs(dirname(self.__song_path), exist_ok=True)
+                    total_size = stream.input_stream.size
+                    os.makedirs(dirname(self.__song_path), exist_ok=True)
 
-            with open(self.__song_path, "wb") as f:
-                c_stream = stream.input_stream.stream()
-                data = c_stream.read(total_size)
-                c_stream.close()
-                f.write(data)
+                    with open(self.__song_path, "wb") as f:
+                        c_stream = stream.input_stream.stream()
+                        data = c_stream.read(total_size)
+                        c_stream.close()
+                        f.write(data)
 
+                    break  # Exit the retry loop on success
+
+                except RuntimeError as e:
+                    # Handle specific retryable errors
+                    if "Failed fetching audio key!" in str(e) and retries < max_retries:
+                        print(json.dumps({
+                            "status": "retrying",
+                            "max_retries": max_retries,
+                            "retries": retries + 1,
+                            "seconds_left": retry_delay,
+                            "song": self.__song_metadata['music'],
+                            "artist": self.__song_metadata['artist'],
+                            "album": self.__song_metadata['album']
+                        }))
+                        time.sleep(retry_delay)
+                        retries += 1
+                    else:
+                        raise  # Re-raise for non-retryable errors or if retries are exhausted
+
+            # Convert and write track metadata
             self.__convert_audio()
             self.__write_track()
             write_tags(self.__c_track)
 
-            # Add completion status
+            # Print success status
             print(json.dumps({
                 "status": "done",
                 "type": self.__type,
@@ -186,6 +213,7 @@ class EASY_DW:
             return self.__c_track
 
         except Exception as e:
+            # Print error status
             print(f"Error downloading {song}: {str(e)}")
             raise e
 
