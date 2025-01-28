@@ -25,6 +25,7 @@ def __write_flac(song, data):
 	tag.delete()
 	images = Picture()
 	images.type = 3
+	images.mime = 'image/jpeg'
 	images.data = data['image']
 	tag.clear_pictures()
 	tag.add_picture(images)
@@ -41,6 +42,7 @@ def __write_flac(song, data):
 	tag['composer'] = data['composer']
 	tag['copyright'] = data['copyright']
 	tag['bpm'] = f"{data['bpm']}"
+	tag['length'] = f"{int(data['duration'] * 1000)}"
 	tag['organization'] = data['label']
 	tag['isrc'] = data['isrc']
 	tag['lyricist'] = data['lyricist']
