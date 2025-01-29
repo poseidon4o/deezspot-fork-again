@@ -5,7 +5,7 @@ class TrackNotFound(Exception):
 		self.url = url
 
 		if not message:
-			self.message = f"Track {self.url} not found :("
+			self.message = f"Track {self.url} not found (are you premium?)"
 		else:
 			self.message = message
 
@@ -14,7 +14,7 @@ class TrackNotFound(Exception):
 class AlbumNotFound(Exception):
 	def __init__(self, url = None):
 		self.url = url
-		self.msg = f"Album {self.url} not found :("
+		self.msg = f"Album {self.url} not found (are you premium?)"
 		super().__init__(self.msg)
 
 class InvalidLink(Exception):
