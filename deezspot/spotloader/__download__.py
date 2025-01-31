@@ -215,7 +215,17 @@ class EASY_DW:
                     "album": current_album,
                     "song": current_title,
                     "artist": current_artist,
-                    "reason": "Track already exists"
+                    "reason": "Track already existsh"
+                }))
+                return self.__c_track
+            else:
+                print(json.dumps({
+                    "status": "skipped",
+                    "type": self.__type,
+                    "album": current_album,
+                    "song": current_title,
+                    "artist": current_artist,
+                    "reason": "User skipped existing track"
                 }))
                 return self.__c_track
 
