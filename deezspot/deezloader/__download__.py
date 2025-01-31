@@ -33,6 +33,7 @@ from deezspot.libutils.utils import (
     create_zip,
 )
 import json
+import mutagen
 
 class Download_JOB:
 
@@ -168,6 +169,31 @@ class EASY_DW:
         self.__set_quality()
         self.__write_track()
 
+    def __track_exists(self):
+        current_title = self.__song_metadata.get('music', '')
+        current_album = self.__song_metadata.get('album', '')
+        
+        if not current_title or not current_album:
+            return False
+
+        for root, _, files in os.walk(self.__output_dir):
+            for file in files:
+                if file.lower().endswith(('.mp3', '.flac', '.ogg', '.m4a')):
+                    path = os.path.join(root, file)
+                    try:
+                        audio = mutagen.File(path, easy=True)
+                        if not audio:
+                            continue
+                        title = audio.get('title', [None])[0]
+                        album = audio.get('album', [None])[0]
+                        if (title and album and 
+                            title.lower() == current_title.lower() and 
+                            album.lower() == current_album.lower()):
+                            return True
+                    except:
+                        continue
+        return False
+
     def __set_quality(self) -> None:
         self.__file_format = self.__c_quality['f_format']
         self.__song_quality = self.__c_quality['s_quality']
@@ -223,6 +249,24 @@ class EASY_DW:
         self.__song_metadata['image'] = image
         song = f"{self.__song_metadata['music']} - {self.__song_metadata['artist']}"
 
+        # Check for existing track with same metadata
+        if self.__track_exists():
+            print(json.dumps({
+                "status": "skipped",
+                "type": self.__download_type,
+                "album": self.__song_metadata['album'],
+                "song": self.__song_metadata['music'],
+                "artist": self.__song_metadata['artist'],
+            }))
+            skipped_track = Track(
+                self.__song_metadata,
+                None, None,
+                None, None, None,
+            )
+            skipped_track.success = False
+            return skipped_track
+
+        # Initial download start status
         print(json.dumps({
             "status": "downloading",
             "type": self.__download_type,
@@ -240,7 +284,7 @@ class EASY_DW:
                     raise e
             else:
                 self.download_try()
-        except TrackNotFound as e:
+        except TrackNotFound:
             try:
                 self.__fallback_ids = API.not_found(song, self.__song_metadata['music'])
                 self.__infos_dw = API_GW.get_song_data(self.__fallback_ids)
@@ -251,8 +295,13 @@ class EASY_DW:
 
                 self.__infos_dw['media_url'] = media[0]
                 self.download_try()
-            except TrackNotFound as e2:
-                raise TrackNotFound(f"Track {song} not found after fallback attempt") from e
+            except TrackNotFound:
+                self.__c_track = Track(
+                    self.__song_metadata,
+                    None, None,
+                    None, None, None,
+                )
+                self.__c_track.success = False
 
         self.__c_track.md5_image = pic
         return self.__c_track

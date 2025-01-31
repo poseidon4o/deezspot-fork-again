@@ -28,6 +28,7 @@ from deezspot.libutils.utils import (
     create_zip,
     request,
 )
+import mutagen  # Added import for metadata handling
 
 class Download_JOB:
     session = None
@@ -49,7 +50,7 @@ class EASY_DW:
         self.__not_interface = preferences.not_interface
         self.__quality_download = preferences.quality_download or "NORMAL"
         self.__recursive_download = preferences.recursive_download
-        self.__type = "episode" if preferences.is_episode else "track"  # New type parameter
+        self.__type = "episode" if preferences.is_episode else "track"
 
         self.__c_quality = qualities[self.__quality_download]
         self.__fallback_ids = self.__ids
@@ -115,6 +116,33 @@ class EASY_DW:
         system(ffmpeg_cmd)
         remove(temp_filename)
 
+    def __track_exists(self) -> bool:
+        """Check if a track with the same title and album exists in the destination directory."""
+        if self.__type != 'track':
+            return False  # Skip check for episodes
+
+        current_title = self.__song_metadata.get('music', '')
+        current_album = self.__song_metadata.get('album', '')
+        
+        if not current_title or not current_album:
+            return False
+
+        for root, _, files in os.walk(self.__output_dir):
+            for file in files:
+                if file.lower().endswith(('.mp3', '.flac', '.ogg', '.m4a', '.wav')):
+                    file_path = os.path.join(root, file)
+                    try:
+                        audio = mutagen.File(file_path, easy=True)
+                        if not audio:
+                            continue
+                        title = audio.get('title', [None])[0]
+                        album = audio.get('album', [None])[0]
+                        if title and album and title.lower() == current_title.lower() and album.lower() == current_album.lower():
+                            return True
+                    except Exception:
+                        continue
+        return False
+
     def get_no_dw_track(self) -> Track:
         return self.__c_track
 
@@ -124,7 +152,24 @@ class EASY_DW:
         self.__song_metadata['image'] = image
         song = f"{self.__song_metadata['music']} - {self.__song_metadata['artist']}"
 
-        # Add initial download status with type
+        # Check if track already exists
+        if self.__track_exists():
+            print(json.dumps({
+                "status": "skipped",
+                "type": self.__type,
+                "album": self.__song_metadata['album'],
+                "song": self.__song_metadata['music'],
+                "artist": self.__song_metadata['artist'],
+            }))
+            skipped_track = Track(
+                self.__song_metadata,
+                None, None,
+                None, None, None,
+            )
+            skipped_track.success = False
+            return skipped_track
+
+        # Add initial download status
         print(json.dumps({
             "status": "downloading",
             "type": self.__type,
@@ -149,7 +194,7 @@ class EASY_DW:
         retries = 0
 
         try:
-            # Check if the track already exists
+            # Existing file check (retained for specific path check)
             if isfile(self.__song_path) and check_track(self.__c_track):
                 if self.__recursive_download:
                     return self.__c_track
@@ -160,7 +205,6 @@ class EASY_DW:
 
             while True:
                 try:
-                    # Fetch the track
                     track_id_obj = TrackId.from_base62(self.__ids)
                     stream = Download_JOB.session.content_feeder().load_track(
                         track_id_obj,
@@ -178,10 +222,9 @@ class EASY_DW:
                         c_stream.close()
                         f.write(data)
 
-                    break  # Exit the retry loop on success
+                    break
 
                 except RuntimeError as e:
-                    # Handle specific retryable errors
                     if "Failed fetching audio key!" in str(e) and retries < max_retries:
                         print(json.dumps({
                             "status": "retrying",
@@ -195,14 +238,12 @@ class EASY_DW:
                         time.sleep(retry_delay)
                         retries += 1
                     else:
-                        raise  # Re-raise for non-retryable errors or if retries are exhausted
+                        raise
 
-            # Convert and write track metadata
             self.__convert_audio()
             self.__write_track()
             write_tags(self.__c_track)
 
-            # Print success status
             print(json.dumps({
                 "status": "done",
                 "type": self.__type,
@@ -213,7 +254,6 @@ class EASY_DW:
             return self.__c_track
 
         except Exception as e:
-            # Print error status
             print(f"Error downloading {song}: {str(e)}")
             raise e
 
