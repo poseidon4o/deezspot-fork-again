@@ -1,4 +1,3 @@
-from tqdm import tqdm
 from deezspot.deezloader.dee_api import API
 from copy import deepcopy
 from os.path import isfile
