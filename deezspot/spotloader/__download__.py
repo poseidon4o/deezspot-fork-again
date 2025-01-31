@@ -219,17 +219,15 @@ class EASY_DW:
                 }))
                 return self.__c_track
             else:
-                ans = input(f'A track with the same title "{current_title}" and album "{current_album}" already exists. Redownload? (y/n): ')
-                if ans.lower() not in ('y', 'yes'):
-                    print(json.dumps({
-                        "status": "skipped",
-                        "type": self.__type,
-                        "album": current_album,
-                        "song": current_title,
-                        "artist": current_artist,
-                        "reason": "User skipped existing track"
-                    }))
-                    return self.__c_track
+                print(json.dumps({
+                    "status": "skipped",
+                    "type": self.__type,
+                    "album": current_album,
+                    "song": current_title,
+                    "artist": current_artist,
+                    "reason": "User skipped existing track"
+                }))
+                return self.__c_track
 
         try:
             while True:
