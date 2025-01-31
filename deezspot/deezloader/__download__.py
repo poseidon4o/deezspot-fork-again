@@ -268,7 +268,7 @@ class EASY_DW:
                 "album": current_album,
                 "song": current_title,
                 "artist": self.__song_metadata['artist'],
-                "reason": "User skipped existing track"
+                "reason": "Track already exists"
             }))
             skipped_track = Track(
                 self.__song_metadata,
