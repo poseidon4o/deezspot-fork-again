@@ -1,4 +1,3 @@
-from tqdm import tqdm
 from deezspot.deezloader.dee_api import API
 from copy import deepcopy
 from os.path import isfile
@@ -34,6 +33,11 @@ from deezspot.libutils.utils import (
     create_zip,
 )
 import json
+from mutagen.flac import FLAC
+from mutagen.mp3 import MP3
+from mutagen.id3 import ID3
+from mutagen.mp4 import MP4
+from mutagen import File
 
 class Download_JOB:
 
@@ -169,6 +173,36 @@ class EASY_DW:
         self.__set_quality()
         self.__write_track()
 
+    def __track_already_exists(self, title, album):
+        for root, _, files in os.walk(self.__output_dir):
+            for file in files:
+                file_path = os.path.join(root, file)
+                lower_file = file.lower()
+                try:
+                    existing_title = None
+                    existing_album = None
+                    if lower_file.endswith('.flac'):
+                        audio = FLAC(file_path)
+                        existing_title = audio.get('title', [None])[0]
+                        existing_album = audio.get('album', [None])[0]
+                    elif lower_file.endswith('.mp3'):
+                        audio = MP3(file_path, ID3=ID3)
+                        existing_title = audio.get('TIT2', [None])[0]
+                        existing_album = audio.get('TALB', [None])[0]
+                    elif lower_file.endswith('.m4a'):
+                        audio = MP4(file_path)
+                        existing_title = audio.get('\xa9nam', [None])[0]
+                        existing_album = audio.get('\xa9alb', [None])[0]
+                    elif lower_file.endswith(('.ogg', '.wav')):
+                        audio = File(file_path)
+                        existing_title = audio.get('title', [None])[0]
+                        existing_album = audio.get('album', [None])[0]
+                    if existing_title == title and existing_album == album:
+                        return True
+                except:
+                    continue
+        return False
+
     def __set_quality(self) -> None:
         self.__file_format = self.__c_quality['f_format']
         self.__song_quality = self.__c_quality['s_quality']
@@ -224,6 +258,26 @@ class EASY_DW:
         self.__song_metadata['image'] = image
         song = f"{self.__song_metadata['music']} - {self.__song_metadata['artist']}"
 
+        # Check if track already exists based on metadata
+        current_title = self.__song_metadata['music']
+        current_album = self.__song_metadata['album']
+        if self.__track_already_exists(current_title, current_album):
+            print(json.dumps({
+                "status": "skipped",
+                "type": self.__download_type,
+                "album": current_album,
+                "song": current_title,
+                "artist": self.__song_metadata['artist'],
+                "reason": "User skipped existing track"
+            }))
+            skipped_track = Track(
+                self.__song_metadata,
+                None, None, None,
+                self.__link, self.__ids
+            )
+            skipped_track.success = False
+            return skipped_track
+
         # Initial download start status
         print(json.dumps({
             "status": "downloading",
@@ -232,7 +286,6 @@ class EASY_DW:
             "song": self.__song_metadata['music'],
             "artist": self.__song_metadata['artist']
         }))
-    
 
         try:
             if self.__infos_dw.get('__TYPE__') == 'episode':
