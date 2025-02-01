@@ -645,7 +645,7 @@ class DW_ALBUM:
                 'discnum': f"{c_infos_dw.get('DISK_NUMBER', 1)}",
                 'isrc': c_infos_dw.get('ISRC', ''),
                 'composer': " & ".join(contributors.get('composer', [])),
-                'ar_album': self.__song_metadata['artist'],
+                'album_artist': self.__song_metadata['artist'],
                 'publisher': 'CanZion R',
                 'duration': int(c_infos_dw.get('DURATION', 0)),
                 'explicit': c_infos_dw.get('EXPLICIT_LYRICS', '0') == '1' and '1' or '0'
