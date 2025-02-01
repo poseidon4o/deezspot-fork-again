@@ -624,55 +624,52 @@ class DW_ALBUM:
         for a in range(total_tracks):
             track_number = a + 1
             c_infos_dw = infos_dw[a]
+            
+            # Build the core track metadata from API response
+            contributors = c_infos_dw.get('SNG_CONTRIBUTORS', {})
+            
+            # Handle artists with featuring
+            main_artist = " & ".join(contributors.get('main_artist', []))
+            featuring = " & ".join(contributors.get('featuring', []))
+            artist_parts = [main_artist]
+            if featuring:
+                artist_parts.append(f"(feat. {featuring})")
+                
+            c_song_metadata = {
+                'music': c_infos_dw.get('SNG_TITLE', 'Unknown'),
+                'artist': " ".join(artist_parts),
+                'album': self.__song_metadata['album'],
+                'date': c_infos_dw.get('DIGITAL_RELEASE_DATE', ''),
+                'genre': self.__song_metadata.get('genre', 'Latin Music'),
+                'tracknum': f"{track_number}",
+                'discnum': f"{c_infos_dw.get('DISK_NUMBER', 1)}",
+                'isrc': c_infos_dw.get('ISRC', ''),
+                'composer': " & ".join(contributors.get('composer', [])),
+                'ar_album': self.__song_metadata['artist'],
+                'publisher': 'CanZion R',
+                'duration': int(c_infos_dw.get('DURATION', 0)),
+                'explicit': c_infos_dw.get('EXPLICIT_LYRICS', '0') == '1' and '1' or '0'
+            }
 
-            # Build the per-track metadata by starting with non-list (global) keys.
-            c_song_metadata = {}
+            # Merge with album-level metadata (without overriding track-specific data)
             for key, item in self.__song_metadata_items:
-                if not isinstance(item, list):
-                    c_song_metadata[key] = self.__song_metadata[key]
-
-            # For keys that are supposed to be per-track, try to use the provided list.
-            # If the list is too short, use fallback values from the track info.
-            for key, item in self.__song_metadata_items:
-                if isinstance(item, list):
-                    if len(self.__song_metadata[key]) > a:
-                        c_song_metadata[key] = self.__song_metadata[key][a]
+                if key not in c_song_metadata:  # Don't override already set fields
+                    if isinstance(item, list):
+                        c_song_metadata[key] = self.__song_metadata[key][a] if len(self.__song_metadata[key]) > a else 'Unknown'
                     else:
-                        # Fallback: try to map the key to a value in c_infos_dw.
-                        # Adjust the mapping as needed depending on your API response.
-                        if key == 'music':
-                            c_song_metadata[key] = c_infos_dw.get('SNG_TITLE', 'Unknown')
-                        elif key == 'artist':
-                            # Try to get the track's artist from the track info
-                            track_artist = c_infos_dw.get('ART_NAME', None)
-                            if track_artist is not None:
-                                c_song_metadata[key] = track_artist
-                            else:
-                                # Fallback to the album's artist, ensuring it's a string
-                                album_artist = self.__song_metadata.get('artist', 'Unknown')
-                                if isinstance(album_artist, list):
-                                    # Join the list into a string if it's a list
-                                    c_song_metadata[key] = " & ".join(album_artist)
-                                else:
-                                    c_song_metadata[key] = album_artist
-                        elif key == 'date':
-                            c_song_metadata[key] = c_infos_dw.get('SNG_RELEASE_DATE', 'Unknown')
-                        else:
-                            c_song_metadata[key] = 'Unknown'
-
+                        c_song_metadata[key] = self.__song_metadata[key]
 
             # Print progress as JSON
-            progress_data = {
+            print(json.dumps({
                 "status": "progress",
                 "type": "album",
                 "current_track": track_number,
                 "total_tracks": total_tracks,
                 "percentage": round((track_number / total_tracks) * 100, 2),
-                "album": self.__song_metadata['album'],
-                "song": c_song_metadata.get('music', 'Unknown'),
-                "artist": c_song_metadata.get('artist', 'Unknown')
-            }
-            print(json.dumps(progress_data))
+                "album": c_song_metadata['album'],
+                "song": c_song_metadata['music'],
+                "artist": c_song_metadata['artist']
+            }))
 
             c_infos_dw['media_url'] = medias[a]
             c_preferences = deepcopy(self.__preferences)
@@ -684,20 +681,14 @@ class DW_ALBUM:
                 track = EASY_DW(c_infos_dw, c_preferences).download_try()
             except TrackNotFound:
                 try:
-                    song = f"{c_song_metadata.get('music', 'Unknown')} - {c_song_metadata.get('artist', 'Unknown')}"
-                    ids = API.not_found(song, c_song_metadata.get('music', 'Unknown'))
+                    song = f"{c_song_metadata['music']} - {c_song_metadata['artist']}"
+                    ids = API.not_found(song, c_song_metadata['music'])
                     c_infos_dw = API_GW.get_song_data(ids)
-                    c_media = Download_JOB.check_sources(
-                        [c_infos_dw], self.__quality_download
-                    )
+                    c_media = Download_JOB.check_sources([c_infos_dw], self.__quality_download)
                     c_infos_dw['media_url'] = c_media[0]
                     track = EASY_DW(c_infos_dw, c_preferences).download_try()
                 except TrackNotFound:
-                    track = Track(
-                        c_song_metadata,
-                        None, None,
-                        None, None, None,
-                    )
+                    track = Track(c_song_metadata, None, None, None, None, None)
                     track.success = False
                     print(f"Track not found: {song} :(")
             tracks.append(track)
@@ -718,7 +709,9 @@ class DW_ALBUM:
             "status": "done",
             "type": "album",
             "album": self.__song_metadata['album'],
-            "artist": self.__song_metadata['artist']
+            "artist": self.__song_metadata['artist'],
+            "downloaded_tracks": len([t for t in tracks if t.success]),
+            "total_tracks": total_tracks
         }))
 
         return album
