@@ -24,3 +24,6 @@ deezloader/examples/credentials.json
 deezloader/examples/credentials.json
 deezloader/examples/deezer.py
 .gitignore
+test.py
+credentials.json
+venv/

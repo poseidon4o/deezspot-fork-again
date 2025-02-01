@@ -34,6 +34,7 @@ from deezspot.libutils.others_settings import (
     stock_zip,
     method_save,
     is_thread,
+    stock_real_time_dl
 )
 Spo()
 
@@ -64,7 +65,8 @@ class SpoLogin:
         recursive_download=stock_recursive_download,
         not_interface=stock_not_interface,
         method_save=method_save,
-        is_thread=is_thread
+        is_thread=is_thread,
+        real_time_dl=stock_real_time_dl
     ) -> Track:
         try:
             link_is_valid(link_track)
@@ -72,7 +74,8 @@ class SpoLogin:
             song_metadata = tracking(ids)
 
             preferences = Preferences()
-
+            
+            preferences.real_time_dl = real_time_dl
             preferences.link = link_track
             preferences.song_metadata = song_metadata
             preferences.quality_download = quality_download
@@ -103,7 +106,8 @@ class SpoLogin:
         not_interface=stock_not_interface,
         make_zip=stock_zip,
         method_save=method_save,
-        is_thread=is_thread
+        is_thread=is_thread,
+        real_time_dl=stock_real_time_dl
     ) -> Album:
         try:
             link_is_valid(link_album)
@@ -113,6 +117,7 @@ class SpoLogin:
 
             preferences = Preferences()
 
+            preferences.real_time_dl = real_time_dl
             preferences.link = link_album
             preferences.song_metadata = song_metadata
             preferences.quality_download = quality_download
@@ -145,7 +150,8 @@ class SpoLogin:
         not_interface=stock_not_interface,
         make_zip=stock_zip,
         method_save=method_save,
-        is_thread=is_thread
+        is_thread=is_thread,
+        real_time_dl=stock_real_time_dl
     ) -> Playlist:
         try:
             link_is_valid(link_playlist)
@@ -172,6 +178,7 @@ class SpoLogin:
 
             preferences = Preferences()
 
+            preferences.real_time_dl = real_time_dl
             preferences.link = link_playlist
             preferences.song_metadata = song_metadata
             preferences.quality_download = quality_download
@@ -203,7 +210,8 @@ class SpoLogin:
         recursive_download=stock_recursive_download,
         not_interface=stock_not_interface,
         method_save=method_save,
-        is_thread=is_thread
+        is_thread=is_thread,
+        real_time_dl=stock_real_time_dl
     ) -> Episode:
         try:
             link_is_valid(link_episode)
@@ -213,6 +221,7 @@ class SpoLogin:
 
             preferences = Preferences()
 
+            preferences.real_time_dl = real_time_dl
             preferences.link = link_episode
             preferences.song_metadata = episode_metadata
             preferences.output_dir = output_dir
@@ -242,7 +251,8 @@ class SpoLogin:
         recursive_download=stock_recursive_download,
         not_interface=stock_not_interface,
         make_zip=stock_zip,
-        method_save=method_save
+        method_save=method_save,
+        real_time_dl=stock_real_time_dl
     ) -> Smart:
         try:
             link_is_valid(link)
@@ -265,7 +275,8 @@ class SpoLogin:
                     recursive_quality=recursive_quality,
                     recursive_download=recursive_download,
                     not_interface=not_interface,
-                    method_save=method_save
+                    method_save=method_save,
+                    real_time_dl=real_time_dl
                 )
 
                 smart.type = "track"
@@ -283,7 +294,8 @@ class SpoLogin:
                     recursive_download=recursive_download,
                     not_interface=not_interface,
                     make_zip=make_zip,
-                    method_save=method_save
+                    method_save=method_save,
+                    real_time_dl=real_time_dl
                 )
 
                 smart.type = "album"
@@ -301,7 +313,8 @@ class SpoLogin:
                     recursive_download=recursive_download,
                     not_interface=not_interface,
                     make_zip=make_zip,
-                    method_save=method_save
+                    method_save=method_save,
+                    real_time_dl=real_time_dl
                 )
 
                 smart.type = "playlist"
@@ -318,7 +331,8 @@ class SpoLogin:
                     recursive_quality=recursive_quality,
                     recursive_download=recursive_download,
                     not_interface=not_interface,
-                    method_save=method_save
+                    method_save=method_save,
+                    real_time_dl=real_time_dl
                 )
 
                 smart.type = "episode"

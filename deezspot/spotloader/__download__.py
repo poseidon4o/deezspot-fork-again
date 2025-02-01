@@ -56,6 +56,9 @@ class EASY_DW:
         self.__recursive_download = preferences.recursive_download
         self.__type = "episode" if preferences.is_episode else "track"  # New type parameter
 
+        # NEW: Save the new real_time_dl preference
+        self.__real_time_dl = preferences.real_time_dl
+
         self.__c_quality = qualities[self.__quality_download]
         self.__fallback_ids = self.__ids
 
@@ -246,9 +249,31 @@ class EASY_DW:
 
                     with open(self.__song_path, "wb") as f:
                         c_stream = stream.input_stream.stream()
-                        data = c_stream.read(total_size)
+                        # If real_time_dl is enabled and the duration is provided, throttle the write speed.
+                        if self.__real_time_dl and self.__song_metadata.get("duration"):
+                            duration = self.__song_metadata["duration"]
+                            if duration > 0:
+                                rate_limit = total_size / duration  # bytes per second
+                                chunk_size = 4096
+                                bytes_written = 0
+                                start_time = time.time()
+                                while True:
+                                    chunk = c_stream.read(chunk_size)
+                                    if not chunk:
+                                        break
+                                    f.write(chunk)
+                                    bytes_written += len(chunk)
+                                    expected_time = bytes_written / rate_limit
+                                    elapsed_time = time.time() - start_time
+                                    if expected_time > elapsed_time:
+                                        time.sleep(expected_time - elapsed_time)
+                            else:
+                                data = c_stream.read(total_size)
+                                f.write(data)
+                        else:
+                            data = c_stream.read(total_size)
+                            f.write(data)
                         c_stream.close()
-                        f.write(data)
 
                     break  # Exit the retry loop on success
 
@@ -328,9 +353,31 @@ class EASY_DW:
 
         with open(self.__song_path, "wb") as f:
             c_stream = stream.input_stream.stream()
-            data = c_stream.read(total_size)
+            # For episodes, apply the same real_time_dl throttle if enabled.
+            if self.__real_time_dl and self.__song_metadata.get("duration"):
+                duration = self.__song_metadata["duration"]
+                if duration > 0:
+                    rate_limit = total_size / duration  # bytes per second
+                    chunk_size = 4096
+                    bytes_written = 0
+                    start_time = time.time()
+                    while True:
+                        chunk = c_stream.read(chunk_size)
+                        if not chunk:
+                            break
+                        f.write(chunk)
+                        bytes_written += len(chunk)
+                        expected_time = bytes_written / rate_limit
+                        elapsed_time = time.time() - start_time
+                        if expected_time > elapsed_time:
+                            time.sleep(expected_time - elapsed_time)
+                else:
+                    data = c_stream.read(total_size)
+                    f.write(data)
+            else:
+                data = c_stream.read(total_size)
+                f.write(data)
             c_stream.close()
-            f.write(data)
 
         self.__convert_audio()
         self.__write_episode()

@@ -25,3 +25,4 @@ stock_not_interface = False
 stock_zip = False
 method_save = 3
 is_thread = False # WARNING FOR TRUE, LOOP ON DEFAULT
+stock_real_time_dl = True
