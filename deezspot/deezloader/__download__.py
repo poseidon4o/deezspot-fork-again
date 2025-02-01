@@ -611,7 +611,13 @@ class DW_ALBUM:
             track_number = a + 1
             for key, item in self.__song_metadata_items:
                 if type(item) is list:
-                    c_song_metadata[key] = self.__song_metadata[key][a]
+                    if isinstance(self.__song_metadata[key], list):
+                        if len(self.__song_metadata[key]) > a:
+                            c_song_metadata[key] = self.__song_metadata[key][a]
+                        else:
+                            # Handle the case where the list is too short, e.g., use a default value
+                            c_song_metadata[key] = default_value  # Define an appropriate default_value
+
 
             c_infos_dw = infos_dw[a]
             c_infos_dw['media_url'] = medias[a]
