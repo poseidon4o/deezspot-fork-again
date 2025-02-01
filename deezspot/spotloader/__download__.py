@@ -300,7 +300,7 @@ class EASY_DW:
 
                 except RuntimeError as e:
                     # Handle specific retryable errors
-                    if "Failed fetching audio key!" in str(e) and retries < max_retries:
+                    if retries < max_retries:
                         print(json.dumps({
                             "status": "retrying",
                             "max_retries": max_retries,
