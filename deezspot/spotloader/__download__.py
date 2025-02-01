@@ -200,9 +200,7 @@ class EASY_DW:
 
     def download_try(self) -> Track:
         song = f"{self.__song_metadata['music']} - {self.__song_metadata['artist']}"
-        track_id = self.__ids
-        max_retries = 10
-        retry_delay = 30
+        retry_delay = 30  # seconds to wait between retries
         retries = 0
 
         current_title = self.__song_metadata.get('music')
@@ -211,131 +209,120 @@ class EASY_DW:
 
         # Check if track already exists in output directory
         if self.track_exists(current_title, current_album):
-            if self.__recursive_download:
-                print(json.dumps({
-                    "status": "skipped",
-                    "type": self.__type,
-                    "album": current_album,
-                    "song": current_title,
-                    "artist": current_artist,
-                    "reason": "Track already exists"
-                }))
-                return self.__c_track
-            else:
-                print(json.dumps({
-                    "status": "skipped",
-                    "type": self.__type,
-                    "album": current_album,
-                    "song": current_title,
-                    "artist": current_artist,
-                    "reason": "Track already exists"
-                }))
-                return self.__c_track
-
-        try:
-            while True:
-                try:
-                    # Fetch the track
-                    track_id_obj = TrackId.from_base62(self.__ids)
-                    stream = Download_JOB.session.content_feeder().load_track(
-                        track_id_obj,
-                        VorbisOnlyAudioQuality(self.__dw_quality),
-                        False,
-                        None
-                    )
-
-                    total_size = stream.input_stream.size
-                    os.makedirs(dirname(self.__song_path), exist_ok=True)
-
-                    # Inside download_try(), after opening the file for writing:
-                    with open(self.__song_path, "wb") as f:
-                        c_stream = stream.input_stream.stream()
-                        # If real_time_dl is enabled and the duration is provided, throttle the write speed.
-                        if self.__real_time_dl and self.__song_metadata.get("duration"):
-                            duration = self.__song_metadata["duration"]
-                            if duration > 0:
-                                rate_limit = total_size / duration  # bytes per second
-                                chunk_size = 4096
-                                bytes_written = 0
-                                start_time = time.time()
-                                last_update_time = start_time  # To track when we last printed a status update
-                                # Continue reading until the stream is exhausted
-                                while True:
-                                    chunk = c_stream.read(chunk_size)
-                                    if not chunk:
-                                        break
-                                    f.write(chunk)
-                                    bytes_written += len(chunk)
-                                    
-                                    # Check if at least 1 second has passed since the last update.
-                                    current_time = time.time()
-                                    elapsed_time = current_time - start_time
-                                    if current_time - last_update_time >= 1:
-                                        # Print the real time status update
-                                        print(json.dumps({
-                                            "status": "real_time",
-                                            "type": "track",
-                                            # Ensure a percentage between 0 and 1 (or multiply by 100 if you prefer a percentage).
-                                            "percentage": bytes_written / total_size,
-                                            "album": self.__song_metadata.get('album', ''),
-                                            "song": self.__song_metadata.get('music', ''),
-                                            "artist": self.__song_metadata.get('artist', ''),
-                                            "time_elapsed": int((current_time - start_time) * 1000)
-                                        }))
-                                        last_update_time = current_time
-                                    
-                                    # Throttle the write speed so that the expected time to write matches the actual time elapsed.
-                                    expected_time = bytes_written / rate_limit
-                                    if expected_time > elapsed_time:
-                                        time.sleep(expected_time - elapsed_time)
-                            else:
-                                data = c_stream.read(total_size)
-                                f.write(data)
-                        else:
-                            data = c_stream.read(total_size)
-                            f.write(data)
-                        c_stream.close()
-
-                    break  # Exit the retry loop on success
-
-                except RuntimeError as e:
-                    # Handle specific retryable errors
-                    if retries < max_retries:
-                        print(json.dumps({
-                            "status": "retrying",
-                            "max_retries": max_retries,
-                            "retries": retries + 1,
-                            "seconds_left": retry_delay,
-                            "song": self.__song_metadata['music'],
-                            "artist": self.__song_metadata['artist'],
-                            "album": self.__song_metadata['album']
-                        }))
-                        time.sleep(retry_delay)
-                        retries += 1
-                    else:
-                        raise  # Re-raise for non-retryable errors or if retries are exhausted
-
-            # Convert and write track metadata
-            self.__convert_audio()
-            self.__write_track()
-            write_tags(self.__c_track)
-
-            # Print success status
             print(json.dumps({
-                "status": "done",
+                "status": "skipped",
                 "type": self.__type,
-                "album": self.__song_metadata['album'],
-                "song": self.__song_metadata['music'],
-                "artist": self.__song_metadata['artist']
+                "album": current_album,
+                "song": current_title,
+                "artist": current_artist,
+                "reason": "Track already exists"
             }))
             return self.__c_track
 
+        while True:
+            try:
+                # Fetch the track
+                track_id_obj = TrackId.from_base62(self.__ids)
+                stream = Download_JOB.session.content_feeder().load_track(
+                    track_id_obj,
+                    VorbisOnlyAudioQuality(self.__dw_quality),
+                    False,
+                    None
+                )
+
+                total_size = stream.input_stream.size
+                os.makedirs(dirname(self.__song_path), exist_ok=True)
+
+                with open(self.__song_path, "wb") as f:
+                    c_stream = stream.input_stream.stream()
+                    if self.__real_time_dl and self.__song_metadata.get("duration"):
+                        duration = self.__song_metadata["duration"]
+                        if duration > 0:
+                            rate_limit = total_size / duration  # bytes per second
+                            chunk_size = 4096
+                            bytes_written = 0
+                            start_time = time.time()
+                            last_update_time = start_time
+                            while True:
+                                chunk = c_stream.read(chunk_size)
+                                if not chunk:
+                                    break
+                                f.write(chunk)
+                                bytes_written += len(chunk)
+                                
+                                current_time = time.time()
+                                elapsed_time = current_time - start_time
+                                if current_time - last_update_time >= 1:
+                                    print(json.dumps({
+                                        "status": "real_time",
+                                        "type": "track",
+                                        "percentage": bytes_written / total_size,
+                                        "album": self.__song_metadata.get('album', ''),
+                                        "song": self.__song_metadata.get('music', ''),
+                                        "artist": self.__song_metadata.get('artist', ''),
+                                        "time_elapsed": int((current_time - start_time) * 1000)
+                                    }))
+                                    last_update_time = current_time
+                                
+                                expected_time = bytes_written / rate_limit
+                                if expected_time > elapsed_time:
+                                    time.sleep(expected_time - elapsed_time)
+                        else:
+                            data = c_stream.read(total_size)
+                            f.write(data)
+                    else:
+                        data = c_stream.read(total_size)
+                        f.write(data)
+                    c_stream.close()
+
+                # If we reached here, download was successful; break out of retry loop.
+                break
+
+            except Exception as e:
+                retries += 1
+                print(json.dumps({
+                    "status": "retrying",
+                    "retry_count": retries,
+                    "seconds_left": retry_delay,
+                    "song": self.__song_metadata['music'],
+                    "artist": self.__song_metadata['artist'],
+                    "album": self.__song_metadata['album'],
+                    "error": str(e)
+                }))
+                time.sleep(retry_delay)
+
+        # Convert and write track metadata
+        try:
+            self.__convert_audio()
         except Exception as e:
-            # Print error status
-            print(f"Error downloading {song}: {str(e)}")
-            raise e
-        
+            print(json.dumps({
+                "status": "retrying",
+                "retry_count": retries,
+                "action": "convert_audio",
+                "song": self.__song_metadata['music'],
+                "artist": self.__song_metadata['artist'],
+                "album": self.__song_metadata['album'],
+                "error": str(e)
+            }))
+            time.sleep(retry_delay)
+            self.__convert_audio()
+
+        self.__write_track()
+        write_tags(self.__c_track)
+
+        print(json.dumps({
+            "status": "done",
+            "type": self.__type,
+            "album": self.__song_metadata['album'],
+            "song": self.__song_metadata['music'],
+            "artist": self.__song_metadata['artist']
+        }))
+        return self.__c_track
+
     def download_eps(self) -> Episode:
+        retry_delay = 30  # seconds between retries
+        retries = 0
+
         if isfile(self.__song_path) and check_track(self.__c_episode):
             if self.__recursive_download:
                 return self.__c_episode
@@ -347,7 +334,6 @@ class EASY_DW:
             if not ans in answers:
                 return self.__c_episode
 
-        # Add episode start status
         print(json.dumps({
             "status": "downloading",
             "type": "episode",
@@ -358,23 +344,33 @@ class EASY_DW:
 
         episode_id = EpisodeId.from_base62(self.__ids)
 
-        try:
-            stream = Download_JOB.session.content_feeder().load_episode(
-                episode_id,
-                AudioQuality(self.__dw_quality),
-                False,
-                None
-            )
-        except RuntimeError:
-            raise TrackNotFound(self.__link)
+        while True:
+            try:
+                stream = Download_JOB.session.content_feeder().load_episode(
+                    episode_id,
+                    AudioQuality(self.__dw_quality),
+                    False,
+                    None
+                )
+                break
+            except Exception as e:
+                retries += 1
+                print(json.dumps({
+                    "status": "retrying",
+                    "retry_count": retries,
+                    "seconds_left": retry_delay,
+                    "song": self.__song_metadata['music'],
+                    "artist": self.__song_metadata['artist'],
+                    "album": self.__song_metadata['album'],
+                    "error": str(e)
+                }))
+                time.sleep(retry_delay)
 
         total_size = stream.input_stream.size
-
         os.makedirs(dirname(self.__song_path), exist_ok=True)
 
         with open(self.__song_path, "wb") as f:
             c_stream = stream.input_stream.stream()
-            # For episodes, apply the same real_time_dl throttle if enabled.
             if self.__real_time_dl and self.__song_metadata.get("duration"):
                 duration = self.__song_metadata["duration"]
                 if duration > 0:
@@ -400,11 +396,23 @@ class EASY_DW:
                 f.write(data)
             c_stream.close()
 
-        self.__convert_audio()
+        try:
+            self.__convert_audio()
+        except Exception as e:
+            print(json.dumps({
+                "status": "retrying",
+                "action": "convert_audio",
+                "song": self.__song_metadata['music'],
+                "artist": self.__song_metadata['artist'],
+                "album": self.__song_metadata['album'],
+                "error": str(e)
+            }))
+            time.sleep(retry_delay)
+            self.__convert_audio()
+
         self.__write_episode()
         write_tags(self.__c_episode)
 
-        # Add episode completion status
         print(json.dumps({
             "status": "done",
             "type": "episode",
@@ -490,7 +498,6 @@ class DW_ALBUM:
         album.md5_image = self.__ids
         album.tags = self.__song_metadata
 
-        # Print initializing status
         print(json.dumps({
             "status": "initializing",
             "type": "album",
@@ -504,7 +511,7 @@ class DW_ALBUM:
             if type(item) is not list:
                 c_song_metadata[key] = self.__song_metadata[key]
 
-        for a in range(album.nb_tracks):  # Replaced tqdm loop with regular loop
+        for a in range(album.nb_tracks):
             for key, item in self.__song_metadata_items:
                 if type(item) is list:
                     c_song_metadata[key] = self.__song_metadata[key][a]
@@ -517,7 +524,6 @@ class DW_ALBUM:
             percentage = (current_track / total_tracks) * 100
             percentage_rounded = round(percentage, 2)
 
-            # Print JSON progress
             print(json.dumps({
                 "status": "progress",
                 "type": "album",
@@ -562,7 +568,6 @@ class DW_ALBUM:
 
             album.zip_path = zip_name
 
-        # Print done status
         print(json.dumps({
             "status": "done",
             "type": "album",
@@ -586,7 +591,6 @@ class DW_PLAYLIST:
         self.__song_metadata = self.__preferences.song_metadata
 
     def dw(self) -> Playlist:
-        # Initializing message
         playlist_name = self.__json_data.get('name', 'unknown')
         owner = self.__json_data.get('owner', {}).get('display_name', 'unknown')
         total_tracks = self.__json_data.get('tracks', {}).get('total', 'unknown')
@@ -624,7 +628,6 @@ class DW_PLAYLIST:
             create_zip(tracks, zip_name = zip_name)
             playlist.zip_path = zip_name
 
-        # Done message
         print(json.dumps({
             "status": "done",
             "type": "playlist",
@@ -636,7 +639,6 @@ class DW_PLAYLIST:
         return playlist
 
     def dw2(self) -> Playlist:
-        # Initializing message (if needed for dw2, else remove)
         playlist_name = self.__json_data.get('name', 'unknown')
         owner = self.__json_data.get('owner', {}).get('display_name', 'unknown')
         total_tracks = self.__json_data.get('tracks', {}).get('total', 'unknown')
@@ -676,7 +678,6 @@ class DW_PLAYLIST:
             create_zip(tracks, zip_name = zip_name)
             playlist.zip_path = zip_name
 
-        # Done message
         print(json.dumps({
             "status": "done",
             "type": "playlist",
