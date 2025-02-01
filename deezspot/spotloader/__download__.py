@@ -280,7 +280,7 @@ class EASY_DW:
                                             "album": self.__song_metadata.get('album', ''),
                                             "song": self.__song_metadata.get('music', ''),
                                             "artist": self.__song_metadata.get('artist', ''),
-                                            "time_elapsed": round(elapsed_time, 3)*1000
+                                            "time_elapsed": int((current_time - start_time) * 1000)
                                         }))
                                         last_update_time = current_time
                                     
