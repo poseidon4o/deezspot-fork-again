@@ -86,51 +86,70 @@ class Download_JOB:
                     }
                 ]
             }
-
+        
     @classmethod
     def check_sources(
         cls,
         infos_dw: list,
         quality_download: str  
     ) -> list:
+        # Preprocess episodes separately
         medias = []
-        
         for track in infos_dw:
             if track.get('__TYPE__') == 'episode':
                 media_json = cls.__get_url(track, quality_download)
                 medias.append(media_json)
-                continue
 
-        tracks_token = [
-            check_track_token(c_track)
-            for c_track in infos_dw
-        ]
+        # For non-episodes, gather tokens
+        non_episode_tracks = [c_track for c_track in infos_dw if c_track.get('__TYPE__') != 'episode']
+        tokens = [check_track_token(c_track) for c_track in non_episode_tracks]
 
-        try:
-            medias = API_GW.get_medias_url(tracks_token, quality_download)
+        def chunk_list(lst, chunk_size):
+            """Yield successive chunk_size chunks from lst."""
+            for i in range(0, len(lst), chunk_size):
+                yield lst[i:i + chunk_size]
 
-            for a in range(
-                len(medias)
-            ):
-                if "errors" in medias[a]:
-                    c_media_json = cls.__get_url(infos_dw[a], quality_download)
-                    medias[a] = c_media_json
-                else:
-                    if not medias[a]['media']:
-                        c_media_json = cls.__get_url(infos_dw[a], quality_download)
-                        medias[a] = c_media_json
+        # Prepare list for media results for non-episodes
+        non_episode_medias = []
 
-                    elif len(medias[a]['media'][0]['sources']) == 1:
-                        c_media_json = cls.__get_url(infos_dw[a], quality_download)
-                        medias[a] = c_media_json
-        except NoRightOnMedia:
-            medias = []
+        # Split tokens into chunks of 25
+        for tokens_chunk in chunk_list(tokens, 25):
+            try:
+                chunk_medias = API_GW.get_medias_url(tokens_chunk, quality_download)
+                # Post-process each returned media in the chunk
+                for idx in range(len(chunk_medias)):
+                    if "errors" in chunk_medias[idx]:
+                        c_media_json = cls.__get_url(non_episode_tracks[len(non_episode_medias) + idx], quality_download)
+                        chunk_medias[idx] = c_media_json
+                    else:
+                        if not chunk_medias[idx]['media']:
+                            c_media_json = cls.__get_url(non_episode_tracks[len(non_episode_medias) + idx], quality_download)
+                            chunk_medias[idx] = c_media_json
+                        elif len(chunk_medias[idx]['media'][0]['sources']) == 1:
+                            c_media_json = cls.__get_url(non_episode_tracks[len(non_episode_medias) + idx], quality_download)
+                            chunk_medias[idx] = c_media_json
+                non_episode_medias.extend(chunk_medias)
+            except NoRightOnMedia:
+                for c_track in tokens_chunk:
+                    # Find the corresponding full track info from non_episode_tracks
+                    track_index = len(non_episode_medias)
+                    c_media_json = cls.__get_url(non_episode_tracks[track_index], quality_download)
+                    non_episode_medias.append(c_media_json)
 
-            for c_track in infos_dw:
-                c_media_json = cls.__get_url(c_track, quality_download)
-                medias.append(c_media_json)
+        # Now, merge the medias. We need to preserve the original order.
+        # We'll create a final list that contains media for each track in infos_dw.
+        final_medias = []
+        episode_idx = 0
+        non_episode_idx = 0
+        for track in infos_dw:
+            if track.get('__TYPE__') == 'episode':
+                final_medias.append(medias[episode_idx])
+                episode_idx += 1
+            else:
+                final_medias.append(non_episode_medias[non_episode_idx])
+                non_episode_idx += 1
 
-        return medias
+        return final_medias
 
 class EASY_DW:
     def __init__(
@@ -596,33 +615,52 @@ class DW_ALBUM:
         tracks = album.tracks
         album.tags = self.__song_metadata
 
+        # Get media URLs using the splitting approach
         medias = Download_JOB.check_sources(
             infos_dw, self.__quality_download
         )
 
-        c_song_metadata = {}
-
-        for key, item in self.__song_metadata_items:
-            if type(item) is not list:
-                c_song_metadata[key] = self.__song_metadata[key]
-
         total_tracks = len(infos_dw)
         for a in range(total_tracks):
             track_number = a + 1
-            for key, item in self.__song_metadata_items:
-                if type(item) is list:
-                    if isinstance(self.__song_metadata[key], list):
-                        if len(self.__song_metadata[key]) > a:
-                            c_song_metadata[key] = self.__song_metadata[key][a]
-                        else:
-                            # Handle the case where the list is too short, e.g., use a default value
-                            c_song_metadata[key] = 'Unknown'  # Define an appropriate default_value
-
-
             c_infos_dw = infos_dw[a]
-            c_infos_dw['media_url'] = medias[a]
-            song = f"{c_song_metadata['music']} - {c_song_metadata['artist']}"
-            
+
+            # Build the per-track metadata by starting with non-list (global) keys.
+            c_song_metadata = {}
+            for key, item in self.__song_metadata_items:
+                if not isinstance(item, list):
+                    c_song_metadata[key] = self.__song_metadata[key]
+
+            # For keys that are supposed to be per-track, try to use the provided list.
+            # If the list is too short, use fallback values from the track info.
+            for key, item in self.__song_metadata_items:
+                if isinstance(item, list):
+                    if len(self.__song_metadata[key]) > a:
+                        c_song_metadata[key] = self.__song_metadata[key][a]
+                    else:
+                        # Fallback: try to map the key to a value in c_infos_dw.
+                        # Adjust the mapping as needed depending on your API response.
+                        if key == 'music':
+                            c_song_metadata[key] = c_infos_dw.get('SNG_TITLE', 'Unknown')
+                        elif key == 'artist':
+                            # Try to get the track's artist from the track info
+                            track_artist = c_infos_dw.get('ART_NAME', None)
+                            if track_artist is not None:
+                                c_song_metadata[key] = track_artist
+                            else:
+                                # Fallback to the album's artist, ensuring it's a string
+                                album_artist = self.__song_metadata.get('artist', 'Unknown')
+                                if isinstance(album_artist, list):
+                                    # Join the list into a string if it's a list
+                                    c_song_metadata[key] = " & ".join(album_artist)
+                                else:
+                                    c_song_metadata[key] = album_artist
+                        elif key == 'date':
+                            c_song_metadata[key] = c_infos_dw.get('SNG_RELEASE_DATE', 'Unknown')
+                        else:
+                            c_song_metadata[key] = 'Unknown'
+
+
             # Print progress as JSON
             progress_data = {
                 "status": "progress",
@@ -631,11 +669,12 @@ class DW_ALBUM:
                 "total_tracks": total_tracks,
                 "percentage": round((track_number / total_tracks) * 100, 2),
                 "album": self.__song_metadata['album'],
-                "song": c_song_metadata['music'],
-                "artist": c_song_metadata['artist']
+                "song": c_song_metadata.get('music', 'Unknown'),
+                "artist": c_song_metadata.get('artist', 'Unknown')
             }
             print(json.dumps(progress_data))
 
+            c_infos_dw['media_url'] = medias[a]
             c_preferences = deepcopy(self.__preferences)
             c_preferences.song_metadata = c_song_metadata.copy()
             c_preferences.ids = c_infos_dw['SNG_ID']
@@ -645,15 +684,13 @@ class DW_ALBUM:
                 track = EASY_DW(c_infos_dw, c_preferences).download_try()
             except TrackNotFound:
                 try:
-                    ids = API.not_found(song, c_song_metadata['music'])
+                    song = f"{c_song_metadata.get('music', 'Unknown')} - {c_song_metadata.get('artist', 'Unknown')}"
+                    ids = API.not_found(song, c_song_metadata.get('music', 'Unknown'))
                     c_infos_dw = API_GW.get_song_data(ids)
-
                     c_media = Download_JOB.check_sources(
                         [c_infos_dw], self.__quality_download
                     )
-
                     c_infos_dw['media_url'] = c_media[0]
-
                     track = EASY_DW(c_infos_dw, c_preferences).download_try()
                 except TrackNotFound:
                     track = Track(
@@ -662,8 +699,7 @@ class DW_ALBUM:
                         None, None, None,
                     )
                     track.success = False
-                    xprint(f"Track not found: {song} :(")
-
+                    print(f"Track not found: {song} :(")
             tracks.append(track)
 
         if self.__make_zip:
