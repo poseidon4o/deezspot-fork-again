@@ -247,6 +247,7 @@ class EASY_DW:
                     total_size = stream.input_stream.size
                     os.makedirs(dirname(self.__song_path), exist_ok=True)
 
+                    # Inside download_try(), after opening the file for writing:
                     with open(self.__song_path, "wb") as f:
                         c_stream = stream.input_stream.stream()
                         # If real_time_dl is enabled and the duration is provided, throttle the write speed.
@@ -257,14 +258,34 @@ class EASY_DW:
                                 chunk_size = 4096
                                 bytes_written = 0
                                 start_time = time.time()
+                                last_update_time = start_time  # To track when we last printed a status update
+                                # Continue reading until the stream is exhausted
                                 while True:
                                     chunk = c_stream.read(chunk_size)
                                     if not chunk:
                                         break
                                     f.write(chunk)
                                     bytes_written += len(chunk)
+                                    
+                                    # Check if at least 1 second has passed since the last update.
+                                    current_time = time.time()
+                                    elapsed_time = current_time - start_time
+                                    if current_time - last_update_time >= 1:
+                                        # Print the real time status update
+                                        print(json.dumps({
+                                            "status": "real_time",
+                                            "type": "track",
+                                            # Ensure a percentage between 0 and 1 (or multiply by 100 if you prefer a percentage).
+                                            "percentage": bytes_written / total_size,
+                                            "album": self.__song_metadata.get('album', ''),
+                                            "song": self.__song_metadata.get('music', ''),
+                                            "artist": self.__song_metadata.get('artist', ''),
+                                            "time_elapsed": round(elapsed_time, 3)*1000
+                                        }))
+                                        last_update_time = current_time
+                                    
+                                    # Throttle the write speed so that the expected time to write matches the actual time elapsed.
                                     expected_time = bytes_written / rate_limit
-                                    elapsed_time = time.time() - start_time
                                     if expected_time > elapsed_time:
                                         time.sleep(expected_time - elapsed_time)
                             else:
