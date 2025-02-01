@@ -11,7 +11,7 @@ class Spo:
     @classmethod
     def __init__(cls):
         cls.__api = Spotify(
-            auth_manager=SpotifyAnon() # Instead using spotipy client use spotify anon because spotify client can't fetch information from track or playlist from official spotify
+            auth_manager=SpotifyAnon()  # Instead using spotipy client use spotify anon because spotify client can't fetch information from track or playlist from official spotify
         )
 
     @classmethod
@@ -74,3 +74,22 @@ class Spo:
     def search(cls, query, search_type='track', limit=10):
         search = cls.__api.search(q=query, type=search_type, limit=limit)
         return search
+
+    @classmethod
+    def get_artist(cls, ids, album_type='album,single,compilation,appears_on', limit=50):
+        try:
+            # Request all types of releases by the artist.
+            discography = cls.__api.artist_albums(
+                ids,
+                album_type=album_type,
+                limit=limit
+            )
+        except SpotifyException as error:
+            if error.http_status in cls.__error_codes:
+                raise InvalidLink(ids)
+            else:
+                raise
+
+        # Ensure that all pages of results are fetched.
+        cls.__lazy(discography)
+        return discography

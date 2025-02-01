@@ -27,3 +27,4 @@ deezloader/examples/deezer.py
 test.py
 credentials.json
 venv/
+deetest.py

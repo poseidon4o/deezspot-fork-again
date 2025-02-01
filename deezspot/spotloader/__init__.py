@@ -243,6 +243,66 @@ class SpoLogin:
             traceback.print_exc()
             raise e
 
+    def download_artist(
+        self, link_artist,
+        album_type: str = 'album,single,compilation,appears_on',
+        limit: int = 50,
+        output_dir=stock_output,
+        quality_download=stock_quality,
+        recursive_quality=stock_recursive_quality,
+        recursive_download=stock_recursive_download,
+        not_interface=stock_not_interface,
+        make_zip=stock_zip,
+        method_save=method_save,
+        is_thread=is_thread,
+        real_time_dl=stock_real_time_dl
+    ):
+        """
+        Download all albums (or a subset based on album_type and limit) from an artist.
+        The link_artist parameter should be a valid Spotify artist link or ID.
+        The album_type parameter is a comma-separated string of album types to retrieve.
+        The limit parameter controls how many items are returned per page from Spotify.
+        """
+        try:
+            # Validate and extract the artist ID from the provided link or ID.
+            link_is_valid(link_artist)
+            ids = get_ids(link_artist)
+
+            # Retrieve the artist's discography using the new get_artist method.
+            discography = Spo.get_artist(ids, album_type=album_type, limit=limit)
+            albums = discography.get('items', [])
+            if not albums:
+                raise Exception("No albums found for the provided artist.")
+
+            downloaded_albums = []
+            for album in albums:
+                # Each album should have a Spotify URL to be used with download_album.
+                album_url = album.get('external_urls', {}).get('spotify')
+                if not album_url:
+                    # Skip albums with no valid Spotify URL.
+                    continue
+
+                # Download the album.
+                downloaded_album = self.download_album(
+                    album_url,
+                    output_dir=output_dir,
+                    quality_download=quality_download,
+                    recursive_quality=recursive_quality,
+                    recursive_download=recursive_download,
+                    not_interface=not_interface,
+                    make_zip=make_zip,
+                    method_save=method_save,
+                    is_thread=is_thread,
+                    real_time_dl=real_time_dl
+                )
+                downloaded_albums.append(downloaded_album)
+
+            return downloaded_albums
+
+        except Exception as e:
+            traceback.print_exc()
+            raise e
+
     def download_smart(
         self, link,
         output_dir=stock_output,
