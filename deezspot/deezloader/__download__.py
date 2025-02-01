@@ -616,7 +616,7 @@ class DW_ALBUM:
                             c_song_metadata[key] = self.__song_metadata[key][a]
                         else:
                             # Handle the case where the list is too short, e.g., use a default value
-                            c_song_metadata[key] = default_value  # Define an appropriate default_value
+                            c_song_metadata[key] = 'Unknown'  # Define an appropriate default_value
 
 
             c_infos_dw = infos_dw[a]
