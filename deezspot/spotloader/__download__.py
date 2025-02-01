@@ -218,7 +218,7 @@ class EASY_DW:
                     "album": current_album,
                     "song": current_title,
                     "artist": current_artist,
-                    "reason": "Track already exists (recursive download)"
+                    "reason": "Track already exists"
                 }))
                 return self.__c_track
             else:
@@ -228,7 +228,7 @@ class EASY_DW:
                     "album": current_album,
                     "song": current_title,
                     "artist": current_artist,
-                    "reason": "User skipped existing track"
+                    "reason": "Track already exists"
                 }))
                 return self.__c_track
 
