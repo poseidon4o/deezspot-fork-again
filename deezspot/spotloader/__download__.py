@@ -506,7 +506,8 @@ class DW_ALBUM:
                 "status": "progress",
                 "type": "album",
                 "track": song_name,
-                "current_track": f"{current_track}/{total_tracks}"
+                "current_track": f"{current_track}/{total_tracks}",
+                "album": c_song_metadata['album']
             }))
 
             c_preferences = deepcopy(self.__preferences)

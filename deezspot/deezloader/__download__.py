@@ -634,7 +634,8 @@ class DW_ALBUM:
                 "status": "progress",
                 "type": "album",
                 "track": c_song_metadata['music'],
-                "current_track": current_track_str
+                "current_track": current_track_str,
+                "album": c_song_metadata['album']
             }))
 
             # Merge with album-level metadata (without overriding track-specific data)
