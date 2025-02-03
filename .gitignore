@@ -28,3 +28,4 @@ test.py
 credentials.json
 venv/
 deetest.py
+creds/

@@ -20,7 +20,7 @@ from deezspot.models import (
     Album,
     Playlist,
     Preferences,
-	Episode,
+    Episode,
 )
 from deezspot.deezloader.__utils__ import (
     check_track_ids,
@@ -297,14 +297,7 @@ class EASY_DW:
             skipped_track.success = False
             return skipped_track
 
-        # Initial download start status
-        print(json.dumps({
-            "status": "downloading",
-            "type": self.__download_type,
-            "album": self.__song_metadata['album'],
-            "song": self.__song_metadata['music'],
-            "artist": self.__song_metadata['artist']
-        }))
+        # Removed initial progress reporting
 
         try:
             if self.__infos_dw.get('__TYPE__') == 'episode':
@@ -419,15 +412,7 @@ class EASY_DW:
                 )
                 self.__add_more_tags()
                 write_tags(self.__c_track)
-                
-                # Download complete status
-                print(json.dumps({
-                    "status": "done",
-                    "type": self.__download_type,
-                    "album": self.__song_metadata['album'],
-                    "song": self.__song_metadata['music'],
-                    "artist": self.__song_metadata['artist']
-                }))
+            
             except Exception as e:
                 if isfile(self.__song_path):
                     os.remove(self.__song_path)
@@ -458,31 +443,12 @@ class EASY_DW:
                     if chunk:
                         size = f.write(chunk)
                         downloaded += size
-                        percentage = None
-                        if total_size and total_size > 0:
-                            percentage = round((downloaded / total_size) * 100, 2)
-                        # Episode progress updates
-                        print(json.dumps({
-                            "status": "downloading",
-                            "type": "episode",
-                            "downloaded": downloaded,
-                            "total": total_size,
-                            "percentage": percentage,
-                            "song": self.__song_metadata['music']
-                        }))
+                        # Removed episode progress updates
 
             self.__c_track.success = True
             self.__write_episode()
             write_tags(self.__c_track)
-            
-            # Episode complete status
-            print(json.dumps({
-                "status": "done",
-                "type": "episode",
-                "album": self.__song_metadata['album'],
-                "song": self.__song_metadata['music'],
-                "artist": self.__song_metadata['artist']
-            }))
+        
             return self.__c_track
 
         except Exception as e:
@@ -545,34 +511,34 @@ class EASY_DW:
             self.__song_metadata['lyricist'] = need['LYRICS_WRITERS']
             
 class DW_TRACK:
-	def __init__(
-		self,
-		preferences: Preferences
-	) -> None:
+    def __init__(
+        self,
+        preferences: Preferences
+    ) -> None:
 
-		self.__preferences = preferences
-		self.__ids = self.__preferences.ids
-		self.__song_metadata = self.__preferences.song_metadata
-		self.__quality_download = self.__preferences.quality_download
+        self.__preferences = preferences
+        self.__ids = self.__preferences.ids
+        self.__song_metadata = self.__preferences.song_metadata
+        self.__quality_download = self.__preferences.quality_download
 
-	def dw(self) -> Track:
-		infos_dw = API_GW.get_song_data(self.__ids)
+    def dw(self) -> Track:
+        infos_dw = API_GW.get_song_data(self.__ids)
 
-		media = Download_JOB.check_sources(
-			[infos_dw], self.__quality_download
-		)
+        media = Download_JOB.check_sources(
+            [infos_dw], self.__quality_download
+        )
 
-		infos_dw['media_url'] = media[0]
+        infos_dw['media_url'] = media[0]
 
-		track = EASY_DW(infos_dw, self.__preferences).easy_dw()
+        track = EASY_DW(infos_dw, self.__preferences).easy_dw()
 
-		if not track.success:
-			song = f"{self.__song_metadata['music']} - {self.__song_metadata['artist']}"
-			error_msg = f"Cannot download {song}, maybe it's not available in this format?"
+        if not track.success:
+            song = f"{self.__song_metadata['music']} - {self.__song_metadata['artist']}"
+            error_msg = f"Cannot download {song}, maybe it's not available in this format?"
 
-			raise TrackNotFound(message = error_msg)
+            raise TrackNotFound(message = error_msg)
 
-		return track
+        return track
 
 class DW_ALBUM:
     def __init__(
@@ -593,14 +559,6 @@ class DW_ALBUM:
 
     def dw(self) -> Album:
         infos_dw = API_GW.get_album_data(self.__ids)['data']
-
-        # Print initializing message when album download starts
-        print(json.dumps({
-            "status": "initializing",
-            "type": "album",
-            "album": self.__song_metadata['album'],
-            "artist": self.__song_metadata['artist']
-        }))
 
         md5_image = infos_dw[0]['ALB_PICTURE']
         image = API.choose_img(md5_image)
@@ -659,17 +617,7 @@ class DW_ALBUM:
                     else:
                         c_song_metadata[key] = self.__song_metadata[key]
 
-            # Print progress as JSON
-            print(json.dumps({
-                "status": "progress",
-                "type": "album",
-                "current_track": track_number,
-                "total_tracks": total_tracks,
-                "percentage": round((track_number / total_tracks) * 100, 2),
-                "album": c_song_metadata['album'],
-                "song": c_song_metadata['music'],
-                "artist": c_song_metadata['artist']
-            }))
+            # Removed progress reporting here
 
             c_infos_dw['media_url'] = medias[a]
             c_preferences = deepcopy(self.__preferences)
@@ -704,16 +652,6 @@ class DW_ALBUM:
             )
             album.zip_path = zip_name
 
-        # Album download complete message
-        print(json.dumps({
-            "status": "done",
-            "type": "album",
-            "album": self.__song_metadata['album'],
-            "artist": self.__song_metadata['artist'],
-            "downloaded_tracks": len([t for t in tracks if t.success]),
-            "total_tracks": total_tracks
-        }))
-
         return album
 
 class DW_PLAYLIST:
@@ -737,15 +675,6 @@ class DW_PLAYLIST:
         playlist_name = self.__json_data['title']
         playlist_owner = self.__json_data.get('PARENT_USERNAME', 'unknown')
         total_tracks = len(infos_dw)
-        
-        # Print initializing message
-        print(json.dumps({
-            "status": "initializing",
-            "type": "playlist",
-            "name": playlist_name,
-            "owner": playlist_owner,
-            "total_tracks": total_tracks
-        }))
 
         playlist = Playlist()
         tracks = playlist.tracks
@@ -758,7 +687,7 @@ class DW_PLAYLIST:
             infos_dw, medias, self.__song_metadata
         ):
             if type(c_song_metadata) is str:
-                print(f"Track not found {c_song_metadata} :(")
+                # Removed progress reporting for not found tracks
                 continue
 
             c_infos_dw['media_url'] = c_media
@@ -779,15 +708,6 @@ class DW_PLAYLIST:
             zip_name = f"{self.__output_dir}/{playlist_title} [playlist {self.__ids}]"
             create_zip(tracks, zip_name = zip_name)
             playlist.zip_path = zip_name
-
-        # Print done message
-        print(json.dumps({
-            "status": "done",
-            "type": "playlist",
-            "name": playlist_name,
-            "owner": playlist_owner,
-            "total_tracks": total_tracks
-        }))
 
         return playlist
 
@@ -841,18 +761,7 @@ class DW_EPISODE:
                     if chunk:
                         size = f.write(chunk)
                         downloaded += size
-                        percentage = None
-                        if total_size and total_size > 0:
-                            percentage = round((downloaded / total_size) * 100, 2)
-                        progress_json = {
-                            "status": "downloading",
-                            "type": "track",
-                            "downloaded": downloaded,
-                            "total": total_size,
-                            "percentage": percentage,
-                            "song": self.__preferences.song_metadata['music']
-                        }
-                        print(json.dumps(progress_json))
+                        # Removed progress reporting here
             
             episode = Track(
                 self.__preferences.song_metadata,
