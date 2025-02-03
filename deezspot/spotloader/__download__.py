@@ -233,13 +233,35 @@ class EASY_DW:
 
                 with open(self.__song_path, "wb") as f:
                     c_stream = stream.input_stream.stream()
-                    # (Real-time progress printing removed to match new status formats)
+                    # If real_time_dl is enabled and we have a positive duration, do a rate-limited download.
                     if self.__real_time_dl and self.__song_metadata.get("duration"):
                         duration = self.__song_metadata["duration"]
                         if duration > 0:
-                            # Download without per-chunk progress prints
-                            data = c_stream.read(total_size)
-                            f.write(data)
+                            # Calculate the approximate rate in bytes per second.
+                            rate_limit = total_size / duration
+                            chunk_size = 4096
+                            bytes_written = 0
+                            start_time = time.time()
+                            while True:
+                                chunk = c_stream.read(chunk_size)
+                                if not chunk:
+                                    break
+                                f.write(chunk)
+                                bytes_written += len(chunk)
+                                # Calculate elapsed time (in seconds) and send a real_time update.
+                                elapsed = time.time() - start_time
+                                # Print a JSON status message for real_time download.
+                                print(json.dumps({
+                                    "status": "real_time",
+                                    "song": self.__song_metadata.get("music", ""),
+                                    "artist": self.__song_metadata.get("artist", ""),
+                                    "time_elapsed": int(elapsed * 1000),  # in milliseconds
+                                    "percentage": bytes_written / total_size
+                                }))
+                                # Wait if we are ahead of real time.
+                                expected_time = bytes_written / rate_limit
+                                if expected_time > elapsed:
+                                    time.sleep(expected_time - elapsed)
                         else:
                             data = c_stream.read(total_size)
                             f.write(data)
@@ -264,7 +286,7 @@ class EASY_DW:
                 }))
                 time.sleep(retry_delay)
 
-        # Convert and write track metadata
+        # Convert and write track metadata.
         try:
             self.__convert_audio()
         except Exception as e:
@@ -283,7 +305,7 @@ class EASY_DW:
         self.__write_track()
         write_tags(self.__c_track)
 
-        # Print final "done" status for track
+        # Print final "done" status for track.
         print(json.dumps({
             "status": "done",
             "type": "track",
