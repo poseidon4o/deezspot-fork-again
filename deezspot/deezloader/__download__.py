@@ -297,7 +297,14 @@ class EASY_DW:
             skipped_track.success = False
             return skipped_track
 
-        # Removed initial progress reporting
+        # Initial download start status
+        print(json.dumps({
+            "status": "downloading",
+            "type": self.__download_type,
+            "album": self.__song_metadata['album'],
+            "song": self.__song_metadata['music'],
+            "artist": self.__song_metadata['artist']
+        }))
 
         try:
             if self.__infos_dw.get('__TYPE__') == 'episode':
@@ -308,6 +315,13 @@ class EASY_DW:
                     raise e
             else:
                 self.download_try()
+                print(json.dumps({
+                    "status": "done",
+                    "type": "track",
+                    "album": self.__song_metadata['album'],
+                    "song": self.__song_metadata['music'],
+                    "artist": self.__song_metadata['artist']
+                }))
         except TrackNotFound:
             try:
                 self.__fallback_ids = API.not_found(song, self.__song_metadata['music'])
@@ -577,6 +591,12 @@ class DW_ALBUM:
         medias = Download_JOB.check_sources(
             infos_dw, self.__quality_download
         )
+        print(json.dumps({
+            "status": "initializing",
+            "type": "album",
+            "album": self.__song_metadata['album'],
+            "artist": self.__song_metadata['artist']
+        }))
 
         total_tracks = len(infos_dw)
         for a in range(total_tracks):
@@ -608,6 +628,14 @@ class DW_ALBUM:
                 'duration': int(c_infos_dw.get('DURATION', 0)),
                 'explicit': c_infos_dw.get('EXPLICIT_LYRICS', '0') == '1' and '1' or '0'
             }
+            # Print progress status for each track
+            current_track_str = f"{track_number}/{total_tracks}"
+            print(json.dumps({
+                "status": "progress",
+                "type": "album",
+                "track": c_song_metadata['music'],
+                "current_track": current_track_str
+            }))
 
             # Merge with album-level metadata (without overriding track-specific data)
             for key, item in self.__song_metadata_items:
@@ -652,6 +680,13 @@ class DW_ALBUM:
             )
             album.zip_path = zip_name
 
+        print(json.dumps({
+            "status": "done",
+            "type": "album",
+            "album": self.__song_metadata['album'],
+            "artist": self.__song_metadata['artist']
+        }))
+
         return album
 
 class DW_PLAYLIST:
@@ -673,8 +708,14 @@ class DW_PLAYLIST:
         
         # Extract playlist metadata
         playlist_name = self.__json_data['title']
-        playlist_owner = self.__json_data.get('PARENT_USERNAME', 'unknown')
         total_tracks = len(infos_dw)
+
+        print(json.dumps({
+            "status": "initializing",
+            "type": "playlist",
+            "name": playlist_name,
+            "total_tracks": total_tracks
+        }))
 
         playlist = Playlist()
         tracks = playlist.tracks
@@ -683,9 +724,8 @@ class DW_PLAYLIST:
             infos_dw, self.__quality_download
         )
 
-        for c_infos_dw, c_media, c_song_metadata in zip(
-            infos_dw, medias, self.__song_metadata
-        ):
+        for idx, (c_infos_dw, c_media, c_song_metadata) in enumerate(zip(infos_dw, medias, self.__song_metadata), 1):
+
             if type(c_song_metadata) is str:
                 # Removed progress reporting for not found tracks
                 continue
@@ -696,6 +736,14 @@ class DW_PLAYLIST:
             c_preferences.song_metadata = c_song_metadata
 
             track = EASY_DW(c_infos_dw, c_preferences).easy_dw()
+
+            current_track_str = f"{idx}/{total_tracks}"
+            print(json.dumps({
+                "status": "progress",
+                "type": "playlist",
+                "track": c_song_metadata['music'],
+                "current_track": current_track_str
+            }))
 
             if not track.success:
                 song = f"{c_song_metadata['music']} - {c_song_metadata['artist']}"
@@ -709,6 +757,13 @@ class DW_PLAYLIST:
             create_zip(tracks, zip_name = zip_name)
             playlist.zip_path = zip_name
 
+        print(json.dumps({
+            "status": "done",
+            "type": "playlist",
+            "name": playlist_name,
+            "total_tracks": total_tracks
+        }))
+        
         return playlist
 
 class DW_EPISODE:
