@@ -34,6 +34,10 @@ from mutagen.oggvorbis import OggVorbis
 from mutagen.flac import FLAC
 from mutagen.mp4 import MP4
 
+# --- Global retry counter variables ---
+GLOBAL_RETRY_COUNT = 0
+GLOBAL_MAX_RETRIES = 100  # Adjust this value as needed
+
 class Download_JOB:
     session = None
 
@@ -275,6 +279,8 @@ class EASY_DW:
                 break
 
             except Exception as e:
+                global GLOBAL_RETRY_COUNT
+                GLOBAL_RETRY_COUNT += 1
                 retries += 1
                 print(json.dumps({
                     "status": "retrying",
@@ -285,8 +291,8 @@ class EASY_DW:
                     "album": self.__song_metadata['album'],
                     "error": str(e)
                 }))
-                if retries >= max_retries:
-                    raise Exception(f"Maximum retry limit of {max_retries} reached for track download.")
+                if retries >= max_retries or GLOBAL_RETRY_COUNT >= GLOBAL_MAX_RETRIES:
+                    raise Exception(f"Maximum retry limit reached (local: {max_retries}, global: {GLOBAL_MAX_RETRIES}).")
                 time.sleep(retry_delay)
 
         # Convert and write track metadata.
@@ -346,6 +352,8 @@ class EASY_DW:
                 )
                 break
             except Exception as e:
+                global GLOBAL_RETRY_COUNT
+                GLOBAL_RETRY_COUNT += 1
                 retries += 1
                 print(json.dumps({
                     "status": "retrying",
@@ -356,8 +364,8 @@ class EASY_DW:
                     "album": self.__song_metadata['album'],
                     "error": str(e)
                 }))
-                if retries >= max_retries:
-                    raise Exception(f"Maximum retry limit of {max_retries} reached for episode download.")
+                if retries >= max_retries or GLOBAL_RETRY_COUNT >= GLOBAL_MAX_RETRIES:
+                    raise Exception(f"Maximum retry limit reached (local: {max_retries}, global: {GLOBAL_MAX_RETRIES}).")
                 time.sleep(retry_delay)
 
         total_size = stream.input_stream.size
