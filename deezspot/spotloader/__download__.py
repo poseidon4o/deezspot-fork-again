@@ -220,7 +220,7 @@ class EASY_DW:
 
         retries = 0
         retry_delay = 30  # start with 30 seconds delay
-        max_retries = 3
+        max_retries = 5
 
         while True:
             try:
@@ -329,7 +329,7 @@ class EASY_DW:
     def download_eps(self) -> Episode:
         retry_delay = 30  # start with 30 seconds delay
         retries = 0
-        max_retries = 3
+        max_retries = 5
 
         if isfile(self.__song_path) and check_track(self.__c_episode):
             if self.__recursive_download:
