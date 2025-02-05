@@ -216,6 +216,7 @@ class EASY_DW:
 
         retries = 0
         retry_delay = 30  # seconds to wait between retries
+        max_retries = 10
 
         while True:
             try:
@@ -284,6 +285,8 @@ class EASY_DW:
                     "album": self.__song_metadata['album'],
                     "error": str(e)
                 }))
+                if retries >= max_retries:
+                    raise Exception(f"Maximum retry limit of {max_retries} reached for track download.")
                 time.sleep(retry_delay)
 
         # Convert and write track metadata.
@@ -318,6 +321,7 @@ class EASY_DW:
     def download_eps(self) -> Episode:
         retry_delay = 30  # seconds between retries
         retries = 0
+        max_retries = 10
 
         if isfile(self.__song_path) and check_track(self.__c_episode):
             if self.__recursive_download:
@@ -352,6 +356,8 @@ class EASY_DW:
                     "album": self.__song_metadata['album'],
                     "error": str(e)
                 }))
+                if retries >= max_retries:
+                    raise Exception(f"Maximum retry limit of {max_retries} reached for episode download.")
                 time.sleep(retry_delay)
 
         total_size = stream.input_stream.size
