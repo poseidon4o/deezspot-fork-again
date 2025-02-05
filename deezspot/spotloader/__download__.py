@@ -219,7 +219,7 @@ class EASY_DW:
             return self.__c_track
 
         retries = 0
-        retry_delay = 30  # seconds to wait between retries
+        retry_delay = 30  # start with 30 seconds delay
         max_retries = 10
 
         while True:
@@ -294,6 +294,7 @@ class EASY_DW:
                 if retries >= max_retries or GLOBAL_RETRY_COUNT >= GLOBAL_MAX_RETRIES:
                     raise Exception(f"Maximum retry limit reached (local: {max_retries}, global: {GLOBAL_MAX_RETRIES}).")
                 time.sleep(retry_delay)
+                retry_delay += 15  # Increase delay by 15 seconds for next retry
 
         # Convert and write track metadata.
         try:
@@ -309,6 +310,7 @@ class EASY_DW:
                 "error": str(e)
             }))
             time.sleep(retry_delay)
+            retry_delay += 15
             self.__convert_audio()
 
         self.__write_track()
@@ -325,7 +327,7 @@ class EASY_DW:
         return self.__c_track
 
     def download_eps(self) -> Episode:
-        retry_delay = 30  # seconds between retries
+        retry_delay = 30  # start with 30 seconds delay
         retries = 0
         max_retries = 10
 
@@ -367,6 +369,7 @@ class EASY_DW:
                 if retries >= max_retries or GLOBAL_RETRY_COUNT >= GLOBAL_MAX_RETRIES:
                     raise Exception(f"Maximum retry limit reached (local: {max_retries}, global: {GLOBAL_MAX_RETRIES}).")
                 time.sleep(retry_delay)
+                retry_delay += 15  # Increase delay by 15 seconds for next retry
 
         total_size = stream.input_stream.size
         os.makedirs(dirname(self.__song_path), exist_ok=True)
@@ -410,6 +413,7 @@ class EASY_DW:
                 "error": str(e)
             }))
             time.sleep(retry_delay)
+            retry_delay += 15
             self.__convert_audio()
 
         self.__write_episode()
