@@ -215,7 +215,7 @@ class EASY_DW:
                 "album": current_album,
                 "song": current_title,
                 "artist": current_artist
-            }))
+            })) 
             return self.__c_track
 
         retries = 0
