@@ -157,6 +157,8 @@ class EASY_DW:
         infos_dw: dict,
         preferences: Preferences
     ) -> None:
+        
+        self.__preferences = preferences
 
         self.__infos_dw = infos_dw
         self.__ids = preferences.ids
@@ -167,6 +169,7 @@ class EASY_DW:
         self.__quality_download = preferences.quality_download
         self.__recursive_quality = preferences.recursive_quality
         self.__recursive_download = preferences.recursive_download
+
 
         if self.__infos_dw.get('__TYPE__') == 'episode':
             self.__song_metadata = {
@@ -227,22 +230,31 @@ class EASY_DW:
         self.__song_quality = self.__c_quality['s_quality']
 
     def __set_song_path(self) -> None:
-        self.__song_path = set_path(
-            self.__song_metadata,
-            self.__output_dir,
-            self.__song_quality,
-            self.__file_format,
-            self.__method_save
-        )
-    
-    def __set_episode_path(self) -> None:
+        # If the Preferences object has custom formatting strings, pass them on.
+        custom_dir_format = getattr(self.__preferences, 'custom_dir_format', None)
+        custom_track_format = getattr(self.__preferences, 'custom_track_format', None)
         self.__song_path = set_path(
             self.__song_metadata,
             self.__output_dir,
             self.__song_quality,
             self.__file_format,
             self.__method_save,
-            is_episode=True
+            custom_dir_format=custom_dir_format,
+            custom_track_format=custom_track_format
+        )
+    
+    def __set_episode_path(self) -> None:
+        custom_dir_format = getattr(self.__preferences, 'custom_dir_format', None)
+        custom_track_format = getattr(self.__preferences, 'custom_track_format', None)
+        self.__song_path = set_path(
+            self.__song_metadata,
+            self.__output_dir,
+            self.__song_quality,
+            self.__file_format,
+            self.__method_save,
+            is_episode=True,
+            custom_dir_format=custom_dir_format,
+            custom_track_format=custom_track_format
         )
 
     def __write_track(self) -> None:
@@ -646,8 +658,6 @@ class DW_ALBUM:
                     else:
                         c_song_metadata[key] = self.__song_metadata[key]
 
-            # Removed progress reporting here
-
             c_infos_dw['media_url'] = medias[a]
             c_preferences = deepcopy(self.__preferences)
             c_preferences.song_metadata = c_song_metadata.copy()
@@ -672,12 +682,15 @@ class DW_ALBUM:
 
         if self.__make_zip:
             song_quality = tracks[0].quality if tracks else 'Unknown'
+            # Pass along custom directory format if set
+            custom_dir_format = getattr(self.__preferences, 'custom_dir_format', None)
             zip_name = create_zip(
                 tracks,
                 output_dir=self.__output_dir,
                 song_metadata=self.__song_metadata,
                 song_quality=song_quality,
-                method_save=self.__method_save
+                method_save=self.__method_save,
+                custom_dir_format=custom_dir_format
             )
             album.zip_path = zip_name
 
@@ -728,7 +741,6 @@ class DW_PLAYLIST:
         for idx, (c_infos_dw, c_media, c_song_metadata) in enumerate(zip(infos_dw, medias, self.__song_metadata), 1):
 
             if type(c_song_metadata) is str:
-                # Removed progress reporting for not found tracks
                 continue
 
             c_infos_dw['media_url'] = c_media

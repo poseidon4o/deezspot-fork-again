@@ -13,4 +13,6 @@ class Preferences:
         self.not_interface = None
         self.method_save = None
         self.make_zip = None
-        self.real_time_dl = None 
+        self.real_time_dl = None ,
+        self.custom_dir_format = None,
+        self.custom_track_format = None

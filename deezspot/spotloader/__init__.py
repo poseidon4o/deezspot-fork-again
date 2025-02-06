@@ -66,7 +66,9 @@ class SpoLogin:
         not_interface=stock_not_interface,
         method_save=method_save,
         is_thread=is_thread,
-        real_time_dl=stock_real_time_dl
+        real_time_dl=stock_real_time_dl,
+        custom_dir_format=None,
+        custom_track_format=None
     ) -> Track:
         try:
             link_is_valid(link_track)
@@ -74,7 +76,6 @@ class SpoLogin:
             song_metadata = tracking(ids)
 
             preferences = Preferences()
-            
             preferences.real_time_dl = real_time_dl
             preferences.link = link_track
             preferences.song_metadata = song_metadata
@@ -86,6 +87,9 @@ class SpoLogin:
             preferences.not_interface = not_interface
             preferences.method_save = method_save
             preferences.is_episode = False
+            # New custom formatting preferences
+            preferences.custom_dir_format = custom_dir_format
+            preferences.custom_track_format = custom_track_format
 
             if not is_thread:
                 track = DW_TRACK(preferences).dw()
@@ -107,7 +111,9 @@ class SpoLogin:
         make_zip=stock_zip,
         method_save=method_save,
         is_thread=is_thread,
-        real_time_dl=stock_real_time_dl
+        real_time_dl=stock_real_time_dl,
+        custom_dir_format=None,
+        custom_track_format=None
     ) -> Album:
         try:
             link_is_valid(link_album)
@@ -116,7 +122,6 @@ class SpoLogin:
             song_metadata = tracking_album(album_json)
 
             preferences = Preferences()
-
             preferences.real_time_dl = real_time_dl
             preferences.link = link_album
             preferences.song_metadata = song_metadata
@@ -130,6 +135,9 @@ class SpoLogin:
             preferences.method_save = method_save
             preferences.make_zip = make_zip
             preferences.is_episode = False
+            # New custom formatting preferences
+            preferences.custom_dir_format = custom_dir_format
+            preferences.custom_track_format = custom_track_format
 
             if not is_thread:
                 album = DW_ALBUM(preferences).dw()
@@ -151,7 +159,9 @@ class SpoLogin:
         make_zip=stock_zip,
         method_save=method_save,
         is_thread=is_thread,
-        real_time_dl=stock_real_time_dl
+        real_time_dl=stock_real_time_dl,
+        custom_dir_format=None,
+        custom_track_format=None
     ) -> Playlist:
         try:
             link_is_valid(link_playlist)
@@ -162,22 +172,17 @@ class SpoLogin:
 
             for track in playlist_json['tracks']['items']:
                 is_track = track['track']
-
                 if not is_track:
                     continue
-
                 external_urls = is_track['external_urls']
-
                 if not external_urls:
                     c_song_metadata = f"The track \"{is_track['name']}\" is not available on Spotify :("
                 else:
                     ids = get_ids(external_urls['spotify'])
                     c_song_metadata = tracking(ids)
-
                 song_metadata.append(c_song_metadata)
 
             preferences = Preferences()
-
             preferences.real_time_dl = real_time_dl
             preferences.link = link_playlist
             preferences.song_metadata = song_metadata
@@ -191,6 +196,9 @@ class SpoLogin:
             preferences.method_save = method_save
             preferences.make_zip = make_zip
             preferences.is_episode = False
+            # New custom formatting preferences
+            preferences.custom_dir_format = custom_dir_format
+            preferences.custom_track_format = custom_track_format
 
             if not is_thread:
                 playlist = DW_PLAYLIST(preferences).dw()
@@ -201,7 +209,7 @@ class SpoLogin:
         except Exception as e:
             traceback.print_exc()
             raise e
-    
+
     def download_episode(
         self, link_episode,
         output_dir=stock_output,
@@ -211,7 +219,9 @@ class SpoLogin:
         not_interface=stock_not_interface,
         method_save=method_save,
         is_thread=is_thread,
-        real_time_dl=stock_real_time_dl
+        real_time_dl=stock_real_time_dl,
+        custom_dir_format=None,
+        custom_track_format=None
     ) -> Episode:
         try:
             link_is_valid(link_episode)
@@ -220,7 +230,6 @@ class SpoLogin:
             episode_metadata = tracking_episode(ids)
 
             preferences = Preferences()
-
             preferences.real_time_dl = real_time_dl
             preferences.link = link_episode
             preferences.song_metadata = episode_metadata
@@ -232,6 +241,9 @@ class SpoLogin:
             preferences.not_interface = not_interface
             preferences.method_save = method_save
             preferences.is_episode = True
+            # New custom formatting preferences
+            preferences.custom_dir_format = custom_dir_format
+            preferences.custom_track_format = custom_track_format
 
             if not is_thread:
                 episode = DW_EPISODE(preferences).dw()
@@ -255,34 +267,25 @@ class SpoLogin:
         make_zip=stock_zip,
         method_save=method_save,
         is_thread=is_thread,
-        real_time_dl=stock_real_time_dl
+        real_time_dl=stock_real_time_dl,
+        custom_dir_format=None,
+        custom_track_format=None
     ):
         """
         Download all albums (or a subset based on album_type and limit) from an artist.
-        The link_artist parameter should be a valid Spotify artist link or ID.
-        The album_type parameter is a comma-separated string of album types to retrieve.
-        The limit parameter controls how many items are returned per page from Spotify.
         """
         try:
-            # Validate and extract the artist ID from the provided link or ID.
             link_is_valid(link_artist)
             ids = get_ids(link_artist)
-
-            # Retrieve the artist's discography using the new get_artist method.
             discography = Spo.get_artist(ids, album_type=album_type, limit=limit)
             albums = discography.get('items', [])
             if not albums:
                 raise Exception("No albums found for the provided artist.")
-
             downloaded_albums = []
             for album in albums:
-                # Each album should have a Spotify URL to be used with download_album.
                 album_url = album.get('external_urls', {}).get('spotify')
                 if not album_url:
-                    # Skip albums with no valid Spotify URL.
                     continue
-
-                # Download the album.
                 downloaded_album = self.download_album(
                     album_url,
                     output_dir=output_dir,
@@ -293,12 +296,12 @@ class SpoLogin:
                     make_zip=make_zip,
                     method_save=method_save,
                     is_thread=is_thread,
-                    real_time_dl=real_time_dl
+                    real_time_dl=real_time_dl,
+                    custom_dir_format=custom_dir_format,
+                    custom_track_format=custom_track_format
                 )
                 downloaded_albums.append(downloaded_album)
-
             return downloaded_albums
-
         except Exception as e:
             traceback.print_exc()
             raise e
@@ -312,7 +315,9 @@ class SpoLogin:
         not_interface=stock_not_interface,
         make_zip=stock_zip,
         method_save=method_save,
-        real_time_dl=stock_real_time_dl
+        real_time_dl=stock_real_time_dl,
+        custom_dir_format=None,
+        custom_track_format=None
     ) -> Smart:
         try:
             link_is_valid(link)
@@ -321,13 +326,11 @@ class SpoLogin:
 
             if "spotify.com" in link:
                 source = "https://spotify.com"
-
             smart.source = source
 
             if "track/" in link:
                 if not "spotify.com" in link:
                     raise InvalidLink(link)
-
                 track = self.download_track(
                     link,
                     output_dir=output_dir,
@@ -336,16 +339,16 @@ class SpoLogin:
                     recursive_download=recursive_download,
                     not_interface=not_interface,
                     method_save=method_save,
-                    real_time_dl=real_time_dl
+                    real_time_dl=real_time_dl,
+                    custom_dir_format=custom_dir_format,
+                    custom_track_format=custom_track_format
                 )
-
                 smart.type = "track"
                 smart.track = track
 
             elif "album/" in link:
                 if not "spotify.com" in link:
                     raise InvalidLink(link)
-
                 album = self.download_album(
                     link,
                     output_dir=output_dir,
@@ -355,16 +358,16 @@ class SpoLogin:
                     not_interface=not_interface,
                     make_zip=make_zip,
                     method_save=method_save,
-                    real_time_dl=real_time_dl
+                    real_time_dl=real_time_dl,
+                    custom_dir_format=custom_dir_format,
+                    custom_track_format=custom_track_format
                 )
-
                 smart.type = "album"
                 smart.album = album
 
             elif "playlist/" in link:
                 if not "spotify.com" in link:
                     raise InvalidLink(link)
-
                 playlist = self.download_playlist(
                     link,
                     output_dir=output_dir,
@@ -374,16 +377,16 @@ class SpoLogin:
                     not_interface=not_interface,
                     make_zip=make_zip,
                     method_save=method_save,
-                    real_time_dl=real_time_dl
+                    real_time_dl=real_time_dl,
+                    custom_dir_format=custom_dir_format,
+                    custom_track_format=custom_track_format
                 )
-
                 smart.type = "playlist"
                 smart.playlist = playlist
 
             elif "episode/" in link:
                 if not "spotify.com" in link:
                     raise InvalidLink(link)
-
                 episode = self.download_episode(
                     link,
                     output_dir=output_dir,
@@ -392,9 +395,10 @@ class SpoLogin:
                     recursive_download=recursive_download,
                     not_interface=not_interface,
                     method_save=method_save,
-                    real_time_dl=real_time_dl
+                    real_time_dl=real_time_dl,
+                    custom_dir_format=custom_dir_format,
+                    custom_track_format=custom_track_format
                 )
-
                 smart.type = "episode"
                 smart.episode = episode
 

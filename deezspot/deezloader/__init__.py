@@ -65,7 +65,9 @@ class DeeLogin:
         recursive_quality=stock_recursive_quality,
         recursive_download=stock_recursive_download,
         not_interface=stock_not_interface,
-        method_save=method_save
+        method_save=method_save,
+        custom_dir_format=None,
+        custom_track_format=None
     ) -> Track:
 
         link_is_valid(link_track)
@@ -83,7 +85,6 @@ class DeeLogin:
             song_metadata = API.tracking(ids)
 
         preferences = Preferences()
-
         preferences.link = link_track
         preferences.song_metadata = song_metadata
         preferences.quality_download = quality_download
@@ -93,6 +94,9 @@ class DeeLogin:
         preferences.recursive_download = recursive_download
         preferences.not_interface = not_interface
         preferences.method_save = method_save
+        # New custom formatting preferences:
+        preferences.custom_dir_format = custom_dir_format
+        preferences.custom_track_format = custom_track_format
 
         track = DW_TRACK(preferences).dw()
 
@@ -106,7 +110,9 @@ class DeeLogin:
         recursive_download=stock_recursive_download,
         not_interface=stock_not_interface,
         make_zip=stock_zip,
-        method_save=method_save
+        method_save=method_save,
+        custom_dir_format=None,
+        custom_track_format=None
     ) -> Album:
 
         link_is_valid(link_album)
@@ -120,7 +126,6 @@ class DeeLogin:
         song_metadata = API.tracking_album(album_json)
 
         preferences = Preferences()
-
         preferences.link = link_album
         preferences.song_metadata = song_metadata
         preferences.quality_download = quality_download
@@ -132,6 +137,9 @@ class DeeLogin:
         preferences.not_interface = not_interface
         preferences.method_save = method_save
         preferences.make_zip = make_zip
+        # New custom formatting preferences:
+        preferences.custom_dir_format = custom_dir_format
+        preferences.custom_track_format = custom_track_format
 
         album = DW_ALBUM(preferences).dw()
 
@@ -145,7 +153,9 @@ class DeeLogin:
         recursive_download=stock_recursive_download,
         not_interface=stock_not_interface,
         make_zip=stock_zip,
-        method_save=method_save
+        method_save=method_save,
+        custom_dir_format=None,
+        custom_track_format=None
     ) -> Playlist:
 
         link_is_valid(link_playlist)
@@ -161,7 +171,6 @@ class DeeLogin:
                 c_song_metadata = API.tracking(c_ids)
             except NoDataApi:
                 infos = self.__gw_api.get_song_data(c_ids)
-
                 if not "FALLBACK" in infos:
                     c_song_metadata = f"{track['title']} - {track['artist']['name']}"
                 else:
@@ -170,7 +179,6 @@ class DeeLogin:
             song_metadata.append(c_song_metadata)
 
         preferences = Preferences()
-
         preferences.link = link_playlist
         preferences.song_metadata = song_metadata
         preferences.quality_download = quality_download
@@ -182,6 +190,9 @@ class DeeLogin:
         preferences.not_interface = not_interface
         preferences.method_save = method_save
         preferences.make_zip = make_zip
+        # New custom formatting preferences:
+        preferences.custom_dir_format = custom_dir_format
+        preferences.custom_track_format = custom_track_format
 
         playlist = DW_PLAYLIST(preferences).dw()
 
@@ -194,7 +205,9 @@ class DeeLogin:
         recursive_quality=stock_recursive_quality,
         recursive_download=stock_recursive_download,
         not_interface=stock_not_interface,
-        method_save=method_save
+        method_save=method_save,
+        custom_dir_format=None,
+        custom_track_format=None
     ) -> list[Track]:
 
         link_is_valid(link_artist)
@@ -207,7 +220,9 @@ class DeeLogin:
                 track['link'], output_dir,
                 quality_download, recursive_quality,
                 recursive_download, not_interface,
-                method_save=method_save
+                method_save=method_save,
+                custom_dir_format=custom_dir_format,
+                custom_track_format=custom_track_format
             )
             for track in playlist_json
         ]
@@ -223,14 +238,12 @@ class DeeLogin:
 
         if not external_ids:
             msg = f"⚠ The track \"{track_json['name']}\" can't be converted to Deezer link :( ⚠"
-
             raise TrackNotFound(
                 url=link_track,
                 message=msg
             )
 
         isrc = f"isrc:{external_ids['isrc']}"
-
         track_json_dee = API.get_track(isrc)
         track_link_dee = track_json_dee['link']
 
@@ -243,7 +256,9 @@ class DeeLogin:
         recursive_quality=stock_recursive_quality,
         recursive_download=stock_recursive_download,
         not_interface=stock_not_interface,
-        method_save=method_save
+        method_save=method_save,
+        custom_dir_format=None,
+        custom_track_format=None
     ) -> Track:
 
         track_link_dee = self.convert_spoty_to_dee_link_track(link_track)
@@ -255,7 +270,9 @@ class DeeLogin:
             recursive_quality=recursive_quality,
             recursive_download=recursive_download,
             not_interface=not_interface,
-            method_save=method_save
+            method_save=method_save,
+            custom_dir_format=custom_dir_format,
+            custom_track_format=custom_track_format
         )
 
         return track
@@ -269,15 +286,12 @@ class DeeLogin:
 
         try:
             external_ids = tracks['external_ids']
-
             if not external_ids:
                 raise AlbumNotFound
 
             upc = f"0{external_ids['upc']}"
-
             while upc[0] == "0":
                 upc = upc[1:]
-
                 try:
                     upc = f"upc:{upc}"
                     url = API.get_album(upc)
@@ -290,28 +304,22 @@ class DeeLogin:
             tot = tracks['total_tracks']
             tracks = tracks['tracks']['items']
             tot2 = None
-
             for track in tracks:
                 track_link = track['external_urls']['spotify']
                 track_info = Spo.get_track(track_link)
-
                 try:
                     isrc = f"isrc:{track_info['external_ids']['isrc']}"
                     track_data = API.get_track(isrc)
-
                     if not "id" in track_data['album']:
                         continue
-
                     album_ids = track_data['album']['id']
                     album_json = API.get_album(album_ids)
                     tot2 = album_json['nb_tracks']
-
                     if tot == tot2:
                         link_dee = album_json['link']
                         break
                 except NoDataApi:
                     pass
-
             if tot != tot2:
                 raise AlbumNotFound(link_album)
 
@@ -325,7 +333,9 @@ class DeeLogin:
         recursive_download=stock_recursive_download,
         not_interface=stock_not_interface,
         make_zip=stock_zip,
-        method_save=method_save
+        method_save=method_save,
+        custom_dir_format=None,
+        custom_track_format=None
     ) -> Album:
 
         link_dee = self.convert_spoty_to_dee_link_album(link_album)
@@ -334,7 +344,9 @@ class DeeLogin:
             link_dee, output_dir,
             quality_download, recursive_quality,
             recursive_download, not_interface,
-            make_zip, method_save
+            make_zip, method_save,
+            custom_dir_format=custom_dir_format,
+            custom_track_format=custom_track_format
         )
 
         return album
@@ -347,7 +359,9 @@ class DeeLogin:
         recursive_download=stock_recursive_download,
         not_interface=stock_not_interface,
         make_zip=stock_zip,
-        method_save=method_save
+        method_save=method_save,
+        custom_dir_format=None,
+        custom_track_format=None
     ) -> Playlist:
 
         link_is_valid(link_playlist)
@@ -415,7 +429,9 @@ class DeeLogin:
                     recursive_quality=recursive_quality,
                     recursive_download=recursive_download,
                     not_interface=not_interface,
-                    method_save=method_save
+                    method_save=method_save,
+                    custom_dir_format=custom_dir_format,
+                    custom_track_format=custom_track_format
                 )
                 tracks.append(downloaded_track)
             except (TrackNotFound, NoDataApi) as e:
@@ -445,7 +461,9 @@ class DeeLogin:
         recursive_quality=stock_recursive_quality,
         recursive_download=stock_recursive_download,
         not_interface=stock_not_interface,
-        method_save=method_save
+        method_save=method_save,
+        custom_dir_format=None,
+        custom_track_format=None
     ) -> Track:
 
         query = f"track:{song} artist:{artist}"
@@ -465,7 +483,9 @@ class DeeLogin:
             recursive_quality=recursive_quality,
             recursive_download=recursive_download,
             not_interface=not_interface,
-            method_save=method_save
+            method_save=method_save,
+            custom_dir_format=custom_dir_format,
+            custom_track_format=custom_track_format
         )
 
         return track
@@ -478,7 +498,9 @@ class DeeLogin:
         recursive_quality=stock_recursive_quality,
         recursive_download=stock_recursive_download,
         not_interface=stock_not_interface,
-        method_save=method_save
+        method_save=method_save,
+        custom_dir_format=None,
+        custom_track_format=None
     ) -> Episode:
         
         link_is_valid(link_episode)
@@ -514,6 +536,9 @@ class DeeLogin:
         preferences.recursive_download = recursive_download
         preferences.not_interface = not_interface
         preferences.method_save = method_save
+        # New custom formatting preferences:
+        preferences.custom_dir_format = custom_dir_format
+        preferences.custom_track_format = custom_track_format
 
         episode = DW_EPISODE(preferences).dw()
 
@@ -527,7 +552,9 @@ class DeeLogin:
         recursive_download=stock_recursive_download,
         not_interface=stock_not_interface,
         make_zip=stock_zip,
-        method_save=method_save
+        method_save=method_save,
+        custom_dir_format=None,
+        custom_track_format=None
     ) -> Smart:
 
         link_is_valid(link)
@@ -536,7 +563,6 @@ class DeeLogin:
 
         if "spotify.com" in link:
             source = "https://spotify.com"
-
         elif "deezer.com" in link:
             source = "https://deezer.com"
 
@@ -545,10 +571,8 @@ class DeeLogin:
         if "track/" in link:
             if "spotify.com" in link:
                 func = self.download_trackspo
-
             elif "deezer.com" in link:
                 func = self.download_trackdee
-                
             else:
                 raise InvalidLink(link)
 
@@ -559,19 +583,18 @@ class DeeLogin:
                 recursive_quality=recursive_quality,
                 recursive_download=recursive_download,
                 not_interface=not_interface,
-                method_save=method_save
+                method_save=method_save,
+                custom_dir_format=custom_dir_format,
+                custom_track_format=custom_track_format
             )
-
             smart.type = "track"
             smart.track = track
 
         elif "album/" in link:
             if "spotify.com" in link:
                 func = self.download_albumspo
-
             elif "deezer.com" in link:
                 func = self.download_albumdee
-
             else:
                 raise InvalidLink(link)
 
@@ -583,19 +606,18 @@ class DeeLogin:
                 recursive_download=recursive_download,
                 not_interface=not_interface,
                 make_zip=make_zip,
-                method_save=method_save
+                method_save=method_save,
+                custom_dir_format=custom_dir_format,
+                custom_track_format=custom_track_format
             )
-
             smart.type = "album"
             smart.album = album
 
         elif "playlist/" in link:
             if "spotify.com" in link:
                 func = self.download_playlistspo
-
             elif "deezer.com" in link:
                 func = self.download_playlistdee
-
             else:
                 raise InvalidLink(link)
 
@@ -607,9 +629,10 @@ class DeeLogin:
                 recursive_download=recursive_download,
                 not_interface=not_interface,
                 make_zip=make_zip,
-                method_save=method_save
+                method_save=method_save,
+                custom_dir_format=custom_dir_format,
+                custom_track_format=custom_track_format
             )
-
             smart.type = "playlist"
             smart.playlist = playlist
 
