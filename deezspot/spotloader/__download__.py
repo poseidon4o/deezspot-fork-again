@@ -538,6 +538,16 @@ class DW_PLAYLIST:
             "name": playlist_name,
             "total_tracks": total_tracks
         }))
+
+        # --- Prepare the m3u playlist file ---
+        playlist_m3u_dir = os.path.join(self.__output_dir, "playlists")
+        os.makedirs(playlist_m3u_dir, exist_ok=True)
+        m3u_path = os.path.join(playlist_m3u_dir, f"{playlist_name}.m3u")
+        if not os.path.exists(m3u_path):
+            with open(m3u_path, "w", encoding="utf-8") as m3u_file:
+                m3u_file.write("#EXTM3U\n")
+        # -------------------------------------
+
         playlist = Playlist()
         tracks = playlist.tracks
         for i, c_song_metadata in enumerate(self.__song_metadata):
@@ -552,6 +562,16 @@ class DW_PLAYLIST:
                 song = f"{c_song_metadata['music']} - {c_song_metadata['artist']}"
                 print(f"Cannot download {song}")
             tracks.append(track)
+            # --- Append the final track path to the m3u file using a relative path ---
+            if track.success and hasattr(track, 'song_path') and track.song_path:
+                # Build the relative path from the playlists directory
+                relative_path = os.path.relpath(
+                    track.song_path,
+                    start=os.path.join(self.__output_dir, "playlists")
+                )
+                with open(m3u_path, "a", encoding="utf-8") as m3u_file:
+                    m3u_file.write(f"{relative_path}\n")
+            # ---------------------------------------------------------------------
             print(json.dumps({
                 "status": "progress",
                 "type": "playlist",

@@ -718,6 +718,7 @@ class DW_PLAYLIST:
         self.__quality_download = self.__preferences.quality_download
 
     def dw(self) -> Playlist:
+        # Retrieve playlist data from API
         infos_dw = API_GW.get_playlist_data(self.__ids)['data']
         
         # Extract playlist metadata
@@ -734,12 +735,25 @@ class DW_PLAYLIST:
         playlist = Playlist()
         tracks = playlist.tracks
 
+        # --- Prepare the m3u playlist file ---
+        # m3u file will be placed in output_dir/playlists
+        playlist_m3u_dir = os.path.join(self.__output_dir, "playlists")
+        os.makedirs(playlist_m3u_dir, exist_ok=True)
+        m3u_path = os.path.join(playlist_m3u_dir, f"{playlist_name}.m3u")
+        if not os.path.exists(m3u_path):
+            with open(m3u_path, "w", encoding="utf-8") as m3u_file:
+                m3u_file.write("#EXTM3U\n")
+        # -------------------------------------
+
+        # Get media URLs for each track in the playlist
         medias = Download_JOB.check_sources(
             infos_dw, self.__quality_download
         )
 
+        # Process each track
         for idx, (c_infos_dw, c_media, c_song_metadata) in enumerate(zip(infos_dw, medias, self.__song_metadata), 1):
 
+            # Skip if song metadata is not valid
             if type(c_song_metadata) is str:
                 continue
 
@@ -748,6 +762,7 @@ class DW_PLAYLIST:
             c_preferences.ids = c_infos_dw['SNG_ID']
             c_preferences.song_metadata = c_song_metadata
 
+            # Download the track using the EASY_DW downloader
             track = EASY_DW(c_infos_dw, c_preferences).easy_dw()
 
             current_track_str = f"{idx}/{total_tracks}"
@@ -764,10 +779,21 @@ class DW_PLAYLIST:
 
             tracks.append(track)
 
+            # --- Append the final track path to the m3u file ---
+            # Build a relative path from the playlists directory
+            if track.success and hasattr(track, 'song_path') and track.song_path:
+                relative_song_path = os.path.relpath(
+                    track.song_path,
+                    start=os.path.join(self.__output_dir, "playlists")
+                )
+                with open(m3u_path, "a", encoding="utf-8") as m3u_file:
+                    m3u_file.write(f"{relative_song_path}\n")
+            # --------------------------------------------------
+
         if self.__make_zip:
             playlist_title = self.__json_data['title']
             zip_name = f"{self.__output_dir}/{playlist_title} [playlist {self.__ids}]"
-            create_zip(tracks, zip_name = zip_name)
+            create_zip(tracks, zip_name=zip_name)
             playlist.zip_path = zip_name
 
         print(json.dumps({
