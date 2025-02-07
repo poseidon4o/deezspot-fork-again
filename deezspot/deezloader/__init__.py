@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+import os
 import json
 from deezspot.deezloader.dee_api import API
 from deezspot.easy_spoty import Spo
@@ -385,7 +386,7 @@ class DeeLogin:
         for index, item in enumerate(playlist_tracks, 1):
             is_track = item.get('track')
             if not is_track:
-                # Progress status for invalid track item
+                # Progress status for an invalid track item
                 print(json.dumps({
                     "status": "progress",
                     "type": "playlist",
@@ -422,6 +423,7 @@ class DeeLogin:
             link_track = external_urls['spotify']
 
             try:
+                # Download each track individually via the Spotify-to-Deezer conversion method.
                 downloaded_track = self.download_trackspo(
                     link_track,
                     output_dir=output_dir,
@@ -445,6 +447,24 @@ class DeeLogin:
             "name": playlist_name,
             "total_tracks": total_tracks
         }))
+
+        # === New m3u File Creation Section ===
+        # Create a subfolder "playlists" inside the output directory
+        playlist_m3u_dir = os.path.join(output_dir, "playlists")
+        os.makedirs(playlist_m3u_dir, exist_ok=True)
+        # The m3u file will be named after the playlist (e.g. "MyPlaylist.m3u")
+        m3u_path = os.path.join(playlist_m3u_dir, f"{playlist_name}.m3u")
+        with open(m3u_path, "w", encoding="utf-8") as m3u_file:
+            # Write the m3u header
+            m3u_file.write("#EXTM3U\n")
+            # Append each successfully downloaded track’s relative path
+            for track in tracks:
+                if isinstance(track, Track) and track.success and hasattr(track, 'song_path') and track.song_path:
+                    # Calculate the relative path from the m3u folder to the track file
+                    relative_song_path = os.path.relpath(track.song_path, start=playlist_m3u_dir)
+                    m3u_file.write(f"{relative_song_path}\n")
+        print(f"Created m3u playlist file at: {m3u_path}")
+        # === End m3u File Creation Section ===
 
         if make_zip:
             playlist_name = playlist_json['name']
