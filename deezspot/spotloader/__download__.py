@@ -160,14 +160,26 @@ class EASY_DW:
         return self.__c_track
 
     def track_exists(self, title, album):
-        for root, dirs, files in os.walk(self.__output_dir):
-            for file in files:
-                if file.lower().endswith(('.mp3', '.ogg', '.flac', '.wav', '.m4a', '.opus')):
-                    file_path = os.path.join(root, file)
-                    existing_title, existing_album = self.read_metadata(file_path)
-                    if existing_title == title and existing_album == album:
-                        return True
+        # Ensure the final song path is set
+        if not hasattr(self, '_EASY_DW__song_path') or not self.__song_path:
+            self.__set_song_path()
+
+        # Use only the final directory for scanning
+        final_dir = os.path.dirname(self.__song_path)
+        
+        # If the final directory doesn't exist, there are no files to check
+        if not os.path.exists(final_dir):
+            return False
+
+        # Iterate over files only in the final directory
+        for file in os.listdir(final_dir):
+            if file.lower().endswith(('.mp3', '.ogg', '.flac', '.wav', '.m4a', '.opus')):
+                file_path = os.path.join(final_dir, file)
+                existing_title, existing_album = self.read_metadata(file_path)
+                if existing_title == title and existing_album == album:
+                    return True
         return False
+
 
     def read_metadata(self, file_path):
         try:

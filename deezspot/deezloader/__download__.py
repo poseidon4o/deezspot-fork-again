@@ -196,33 +196,42 @@ class EASY_DW:
         self.__write_track()
 
     def __track_already_exists(self, title, album):
-        for root, _, files in os.walk(self.__output_dir):
-            for file in files:
-                file_path = os.path.join(root, file)
-                lower_file = file.lower()
-                try:
-                    existing_title = None
-                    existing_album = None
-                    if lower_file.endswith('.flac'):
-                        audio = FLAC(file_path)
-                        existing_title = audio.get('title', [None])[0]
-                        existing_album = audio.get('album', [None])[0]
-                    elif lower_file.endswith('.mp3'):
-                        audio = MP3(file_path, ID3=ID3)
-                        existing_title = audio.get('TIT2', [None])[0]
-                        existing_album = audio.get('TALB', [None])[0]
-                    elif lower_file.endswith('.m4a'):
-                        audio = MP4(file_path)
-                        existing_title = audio.get('\xa9nam', [None])[0]
-                        existing_album = audio.get('\xa9alb', [None])[0]
-                    elif lower_file.endswith(('.ogg', '.wav')):
-                        audio = File(file_path)
-                        existing_title = audio.get('title', [None])[0]
-                        existing_album = audio.get('album', [None])[0]
-                    if existing_title == title and existing_album == album:
-                        return True
-                except:
-                    continue
+        # Ensure the song path is set; if not, compute it.
+        if not hasattr(self, '_EASY_DW__song_path') or not self.__song_path:
+            self.__set_song_path()
+        
+        # Get only the final directory where the track will be saved.
+        final_dir = os.path.dirname(self.__song_path)
+        if not os.path.exists(final_dir):
+            return False
+
+        # List files only in the final directory.
+        for file in os.listdir(final_dir):
+            file_path = os.path.join(final_dir, file)
+            lower_file = file.lower()
+            try:
+                existing_title = None
+                existing_album = None
+                if lower_file.endswith('.flac'):
+                    audio = FLAC(file_path)
+                    existing_title = audio.get('title', [None])[0]
+                    existing_album = audio.get('album', [None])[0]
+                elif lower_file.endswith('.mp3'):
+                    audio = MP3(file_path, ID3=ID3)
+                    existing_title = audio.get('TIT2', [None])[0]
+                    existing_album = audio.get('TALB', [None])[0]
+                elif lower_file.endswith('.m4a'):
+                    audio = MP4(file_path)
+                    existing_title = audio.get('\xa9nam', [None])[0]
+                    existing_album = audio.get('\xa9alb', [None])[0]
+                elif lower_file.endswith(('.ogg', '.wav')):
+                    audio = File(file_path)
+                    existing_title = audio.get('title', [None])[0]
+                    existing_album = audio.get('album', [None])[0]
+                if existing_title == title and existing_album == album:
+                    return True
+            except Exception:
+                continue
         return False
 
     def __set_quality(self) -> None:
