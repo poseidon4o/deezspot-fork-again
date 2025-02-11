@@ -42,11 +42,9 @@ from mutagen import File
 class Download_JOB:
 
     @classmethod
-    def __get_url(
-        cls,
-        c_track: Track,  
-        quality_download: str
-    ) -> dict:
+    def __get_url(cls, c_track: Track, quality_download: str) -> dict:
+        print(c_track)
+        print('-------------------------------')
         if c_track.get('__TYPE__') == 'episode':
             return {
                 "media": [{
@@ -57,23 +55,20 @@ class Download_JOB:
             }
         else:
             c_md5, c_media_version = check_track_md5(c_track)
-            track_id_key = check_track_ids(c_track)
-            c_ids = c_track.get(track_id_key, "")
+            track_id = check_track_ids(c_track)  # Now track_id is the actual ID (e.g., '68015917')
             n_quality = qualities[quality_download]['n_quality']
             if not c_md5:
                 raise ValueError("MD5_ORIGIN is missing")
             if not c_media_version:
                 raise ValueError("MEDIA_VERSION is missing")
-            if not c_ids:
-                raise ValueError(f"{track_id_key} is missing")
-
+            if not track_id:
+                raise ValueError("Track ID is missing")
+        
             c_song_hash = gen_song_hash(
                 c_md5, n_quality,
-                c_ids, c_media_version
+                track_id, c_media_version
             )
-
             c_media_url = API_GW.get_song_url(c_md5[0], c_song_hash)
-
             return {
                 "media": [
                     {
@@ -85,7 +80,7 @@ class Download_JOB:
                     }
                 ]
             }
-        
+     
     @classmethod
     def check_sources(
         cls,
