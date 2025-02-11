@@ -60,7 +60,6 @@ class Download_JOB:
             track_id_key = check_track_ids(c_track)
             c_ids = c_track.get(track_id_key, "")
             n_quality = qualities[quality_download]['n_quality']
-
             if not c_md5:
                 raise ValueError("MD5_ORIGIN is missing")
             if not c_media_version:
@@ -93,25 +92,11 @@ class Download_JOB:
         infos_dw: list,
         quality_download: str  
     ) -> list:
-        # Helper: wrap __get_url so that if required data is missing we log an error and return a dummy dict.
-        def safe_get_url(track, quality_download):
-            try:
-                return cls.__get_url(track, quality_download)
-            except Exception as e:
-                print(json.dumps({
-                    "status": "failed",
-                    "type": "source",
-                    "track": track.get('SNG_TITLE', track.get('EPISODE_TITLE', 'Unknown')),
-                    "error": str(e)
-                }))
-                # Return a dummy media dict so that the media list length remains consistent.
-                return {"media": None, "error": str(e)}
-
         # Preprocess episodes separately
         medias = []
         for track in infos_dw:
             if track.get('__TYPE__') == 'episode':
-                media_json = safe_get_url(track, quality_download)
+                media_json = cls.__get_url(track, quality_download)
                 medias.append(media_json)
 
         # For non-episodes, gather tokens
@@ -132,23 +117,22 @@ class Download_JOB:
                 chunk_medias = API_GW.get_medias_url(tokens_chunk, quality_download)
                 # Post-process each returned media in the chunk
                 for idx in range(len(chunk_medias)):
-                    # In any case that a media lookup is “unsuccessful,” fall back to safe_get_url.
                     if "errors" in chunk_medias[idx]:
-                        c_media_json = safe_get_url(non_episode_tracks[len(non_episode_medias) + idx], quality_download)
+                        c_media_json = cls.__get_url(non_episode_tracks[len(non_episode_medias) + idx], quality_download)
                         chunk_medias[idx] = c_media_json
                     else:
                         if not chunk_medias[idx]['media']:
-                            c_media_json = safe_get_url(non_episode_tracks[len(non_episode_medias) + idx], quality_download)
+                            c_media_json = cls.__get_url(non_episode_tracks[len(non_episode_medias) + idx], quality_download)
                             chunk_medias[idx] = c_media_json
                         elif len(chunk_medias[idx]['media'][0]['sources']) == 1:
-                            c_media_json = safe_get_url(non_episode_tracks[len(non_episode_medias) + idx], quality_download)
+                            c_media_json = cls.__get_url(non_episode_tracks[len(non_episode_medias) + idx], quality_download)
                             chunk_medias[idx] = c_media_json
                 non_episode_medias.extend(chunk_medias)
             except NoRightOnMedia:
                 for c_track in tokens_chunk:
                     # Find the corresponding full track info from non_episode_tracks
                     track_index = len(non_episode_medias)
-                    c_media_json = safe_get_url(non_episode_tracks[track_index], quality_download)
+                    c_media_json = cls.__get_url(non_episode_tracks[track_index], quality_download)
                     non_episode_medias.append(c_media_json)
 
         # Now, merge the medias. We need to preserve the original order.
@@ -184,6 +168,7 @@ class EASY_DW:
         self.__quality_download = preferences.quality_download
         self.__recursive_quality = preferences.recursive_quality
         self.__recursive_download = preferences.recursive_download
+
 
         if self.__infos_dw.get('__TYPE__') == 'episode':
             self.__song_metadata = {
@@ -346,17 +331,8 @@ class EASY_DW:
                 try:
                     return self.download_episode_try()
                 except Exception as e:
-                    # MODIFIED: Instead of immediately re-raising, mark as failed and continue.
                     self.__c_track.success = False
-                    print(json.dumps({
-                        "status": "failed",
-                        "type": "episode",
-                        "album": self.__song_metadata['album'],
-                        "song": self.__song_metadata['music'],
-                        "artist": self.__song_metadata['artist'],
-                        "error": str(e)
-                    }))
-                    return self.__c_track
+                    raise e
             else:
                 self.download_try()
                 print(json.dumps({
@@ -513,16 +489,7 @@ class EASY_DW:
             if isfile(self.__song_path):
                 os.remove(self.__song_path)
             self.__c_track.success = False
-            # MODIFIED: Instead of raising an exception, print an error and return the failed track.
-            print(json.dumps({
-                "status": "failed",
-                "type": "episode",
-                "album": self.__song_metadata.get('album', ''),
-                "song": self.__song_metadata.get('music', ''),
-                "artist": self.__song_metadata.get('artist', ''),
-                "error": str(e)
-            }))
-            return self.__c_track
+            raise TrackNotFound(f"Episode download failed: {str(e)}")
 
     def __add_more_tags(self) -> None:
         contributors = self.__infos_dw.get('SNG_CONTRIBUTORS', {})
@@ -912,22 +879,4 @@ class DW_EPISODE:
         except Exception as e:
             if 'output_path' in locals() and os.path.exists(output_path):
                 os.remove(output_path)
-            # MODIFIED: Instead of raising an exception, create a failed episode track.
-            episode = Track(
-                self.__preferences.song_metadata,
-                None,
-                '.mp3',
-                self.__quality_download,
-                f"https://www.deezer.com/episode/{self.__ids}",
-                self.__ids
-            )
-            episode.success = False
-            print(json.dumps({
-                "status": "failed",
-                "type": "episode",
-                "album": self.__preferences.song_metadata.get('album', ''),
-                "song": self.__preferences.song_metadata.get('music', ''),
-                "artist": self.__preferences.song_metadata.get('artist', ''),
-                "error": str(e)
-            }))
-            return episode
+            raise TrackNotFound(f"Episode download failed: {str(e)}")
