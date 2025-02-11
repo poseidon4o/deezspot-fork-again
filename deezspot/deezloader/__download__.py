@@ -367,62 +367,65 @@ class EASY_DW:
         return self.__c_track
 
     def download_try(self) -> Track:
-        if isfile(self.__song_path) and check_track(self.__c_track):
-            if self.__recursive_download:
-                return self.__c_track
+        # Pre-check: if FLAC is requested but filesize is zero, fallback to MP3.
+        if self.__file_format == '.flac':
+            filesize_str = self.__infos_dw.get('FILESIZE_FLAC', '0')
+            try:
+                filesize = int(filesize_str)
+            except ValueError:
+                filesize = 0
 
-            ans = input(
-                f"Track \"{self.__song_path}\" already exists, do you want to redownload it?(y or n):"
-            )
+            if filesize == 0:
+                song = self.__song_metadata['music']
+                artist = self.__song_metadata['artist']
+                # Switch quality settings to MP3_320.
+                self.__quality_download = 'MP3_320'
+                self.__file_format = '.mp3'
+                self.__song_path = self.__song_path.rsplit('.', 1)[0] + '.mp3'
+                media = Download_JOB.check_sources([self.__infos_dw], 'MP3_320')
+                if media:
+                    self.__infos_dw['media_url'] = media[0]
+                else:
+                    raise TrackNotFound(f"Track {song} - {artist} not available in MP3 format")
 
-            if not ans in answers:
-                return self.__c_track
-
+        # Continue with the normal download process.
         try:
             media_list = self.__infos_dw['media_url']['media']
             song_link = media_list[0]['sources'][0]['url']
-            
+
             try:
                 crypted_audio = API_GW.song_exist(song_link)
             except TrackNotFound:
                 song = self.__song_metadata['music']
                 artist = self.__song_metadata['artist']
-                
+
                 if self.__file_format == '.flac':
                     print(f"\n⚠ {song} - {artist} is not available in FLAC format. Trying MP3...")
                     self.__quality_download = 'MP3_320'
                     self.__file_format = '.mp3'
                     self.__song_path = self.__song_path.rsplit('.', 1)[0] + '.mp3'
-                    
+
                     media = Download_JOB.check_sources(
                         [self.__infos_dw], 'MP3_320'
                     )
-                    
                     if media:
                         self.__infos_dw['media_url'] = media[0]
                         song_link = media[0]['media'][0]['sources'][0]['url']
                         crypted_audio = API_GW.song_exist(song_link)
                     else:
                         raise TrackNotFound(f"Track {song} - {artist} not available")
-                
                 else:
                     msg = f"\n⚠ The {song} - {artist} can't be downloaded in {self.__quality_download} quality :( ⚠\n"
-                    
                     if not self.__recursive_quality:
                         raise QualityNotFound(msg=msg)
-                    
                     print(msg)
-                    
                     for c_quality in qualities:
                         if self.__quality_download == c_quality:
                             continue
-                            
                         print(f"🛈 Trying to download {song} - {artist} in {c_quality}")
-                        
                         media = Download_JOB.check_sources(
                             [self.__infos_dw], c_quality
                         )
-                        
                         if media:
                             self.__infos_dw['media_url'] = media[0]
                             song_link = media[0]['media'][0]['sources'][0]['url']
@@ -435,25 +438,22 @@ class EASY_DW:
                                 if c_quality == "MP3_128":
                                     raise TrackNotFound(f"Error with {song} - {artist}", self.__link)
                                 continue
-            
+
             c_crypted_audio = crypted_audio.iter_content(2048)
             self.__fallback_ids = check_track_ids(self.__infos_dw)
-            
+
             try:
                 self.__write_track()
-                decryptfile(
-                    c_crypted_audio, self.__fallback_ids, self.__song_path
-                )
+                decryptfile(c_crypted_audio, self.__fallback_ids, self.__song_path)
                 self.__add_more_tags()
                 write_tags(self.__c_track)
-            
             except Exception as e:
                 if isfile(self.__song_path):
                     os.remove(self.__song_path)
                 raise TrackNotFound(f"Failed to process {self.__song_path}: {str(e)}")
-                
+
             return self.__c_track
-            
+
         except Exception as e:
             raise TrackNotFound(self.__link) from e
 
