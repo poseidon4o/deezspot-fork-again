@@ -408,14 +408,11 @@ class EASY_DW:
                     else:
                         raise TrackNotFound(f"Track {song} - {artist} not available")
                 else:
-                    msg = f"\n⚠ The {song} - {artist} can't be downloaded in {self.__quality_download} quality :( ⚠\n"
                     if not self.__recursive_quality:
                         raise QualityNotFound(msg=msg)
-                    print(msg)
                     for c_quality in qualities:
                         if self.__quality_download == c_quality:
                             continue
-                        print(f"🛈 Trying to download {song} - {artist} in {c_quality}")
                         media = Download_JOB.check_sources(
                             [self.__infos_dw], c_quality
                         )
