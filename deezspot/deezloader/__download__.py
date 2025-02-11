@@ -624,25 +624,19 @@ class DW_ALBUM:
             c_infos_dw = infos_dw[a]
             
             # Build the core track metadata from API response
+            print('C_INFOS_DW HERE:', c_infos_dw)
             contributors = c_infos_dw.get('SNG_CONTRIBUTORS', {})
+
+            print('CONTRIBUTORS HERE:', contributors)
             
-            # Handle artists with featuring
-            main_artist = " & ".join(contributors.get('main_artist', []))
-            featuring = " & ".join(contributors.get('featuring', []))
-            artist_parts = [main_artist]
-            if featuring:
-                artist_parts.append(f"(feat. {featuring})")
-                
             c_song_metadata = {
                 'music': c_infos_dw.get('SNG_TITLE', 'Unknown'),
-                'artist': " ".join(artist_parts),
                 'album': self.__song_metadata['album'],
                 'date': c_infos_dw.get('DIGITAL_RELEASE_DATE', ''),
                 'genre': self.__song_metadata.get('genre', 'Latin Music'),
                 'tracknum': f"{track_number}",
                 'discnum': f"{c_infos_dw.get('DISK_NUMBER', 1)}",
                 'isrc': c_infos_dw.get('ISRC', ''),
-                'composer': " & ".join(contributors.get('composer', [])),
                 'album_artist': self.__song_metadata['artist'],
                 'publisher': 'CanZion R',
                 'duration': int(c_infos_dw.get('DURATION', 0)),

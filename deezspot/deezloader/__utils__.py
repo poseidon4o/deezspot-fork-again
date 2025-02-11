@@ -26,14 +26,14 @@ def check_track_token(infos: dict):
 def check_track_ids(infos: dict) -> str:
     if "FALLBACK" in infos:
         if 'EPISODE_ID' in infos['FALLBACK']:
-            return infos['FALLBACK']['EPISODE_ID']
+            return 'EPISODE_ID'
         elif 'SNG_ID' in infos['FALLBACK']:
-            return infos['FALLBACK']['SNG_ID']
+            return 'SNG_ID'
     else:
         if 'EPISODE_ID' in infos:
-            return infos['EPISODE_ID']
+            return 'EPISODE_ID'
         elif 'SNG_ID' in infos:
-            return infos['SNG_ID']
+            return 'SNG_ID'
     
     raise ValueError("Track ID not found in the provided information")
 
