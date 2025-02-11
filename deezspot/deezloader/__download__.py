@@ -623,12 +623,30 @@ class DW_ALBUM:
             track_number = a + 1
             c_infos_dw = infos_dw[a]
             
-            # Build the core track metadata from API response
-            print('C_INFOS_DW HERE:', c_infos_dw)
+            # Retrieve the contributors info from the API response.
+            # It might be an empty list.
             contributors = c_infos_dw.get('SNG_CONTRIBUTORS', {})
-
-            print('CONTRIBUTORS HERE:', contributors)
             
+            # Check if contributors is an empty list.
+            if isinstance(contributors, list) and not contributors:
+                # Flag indicating we do NOT have contributors data to process.
+                has_contributors = False
+            else:
+                has_contributors = True
+
+            # If we have contributor data, build the artist and composer strings.
+            if has_contributors:
+                main_artist = " & ".join(contributors.get('main_artist', []))
+                featuring = " & ".join(contributors.get('featuring', []))
+                artist_parts = [main_artist]
+                if featuring:
+                    artist_parts.append(f"(feat. {featuring})")
+                artist_str = " ".join(artist_parts)
+                composer_str = " & ".join(contributors.get('composer', []))
+            
+            # Build the core track metadata.
+            # When there is no contributor info, we intentionally leave out the 'artist'
+            # and 'composer' keys so that the album-level metadata merge will supply them.
             c_song_metadata = {
                 'music': c_infos_dw.get('SNG_TITLE', 'Unknown'),
                 'album': self.__song_metadata['album'],
@@ -640,8 +658,14 @@ class DW_ALBUM:
                 'album_artist': self.__song_metadata['artist'],
                 'publisher': 'CanZion R',
                 'duration': int(c_infos_dw.get('DURATION', 0)),
-                'explicit': c_infos_dw.get('EXPLICIT_LYRICS', '0') == '1' and '1' or '0'
+                'explicit': '1' if c_infos_dw.get('EXPLICIT_LYRICS', '0') == '1' else '0'
             }
+            
+            # Only add contributor-based metadata if available.
+            if has_contributors:
+                c_song_metadata['artist'] = artist_str
+                c_song_metadata['composer'] = composer_str
+
             # Print progress status for each track
             current_track_str = f"{track_number}/{total_tracks}"
             print(json.dumps({
@@ -651,26 +675,27 @@ class DW_ALBUM:
                 "current_track": current_track_str,
                 "album": c_song_metadata['album']
             }))
-
-            # Merge with album-level metadata (without overriding track-specific data)
+            
+            # Merge album-level metadata (only add fields not already set in c_song_metadata)
             for key, item in self.__song_metadata_items:
-                if key not in c_song_metadata:  # Don't override already set fields
+                if key not in c_song_metadata:
                     if isinstance(item, list):
                         c_song_metadata[key] = self.__song_metadata[key][a] if len(self.__song_metadata[key]) > a else 'Unknown'
                     else:
                         c_song_metadata[key] = self.__song_metadata[key]
-
+            
+            # Continue with the rest of your processing (media handling, download, etc.)
             c_infos_dw['media_url'] = medias[a]
             c_preferences = deepcopy(self.__preferences)
             c_preferences.song_metadata = c_song_metadata.copy()
             c_preferences.ids = c_infos_dw['SNG_ID']
             c_preferences.link = f"https://deezer.com/track/{c_preferences.ids}"
-
+            
             try:
                 track = EASY_DW(c_infos_dw, c_preferences).download_try()
             except TrackNotFound:
                 try:
-                    song = f"{c_song_metadata['music']} - {c_song_metadata['artist']}"
+                    song = f"{c_song_metadata['music']} - {c_song_metadata.get('artist', self.__song_metadata['artist'])}"
                     ids = API.not_found(song, c_song_metadata['music'])
                     c_infos_dw = API_GW.get_song_data(ids)
                     c_media = Download_JOB.check_sources([c_infos_dw], self.__quality_download)
