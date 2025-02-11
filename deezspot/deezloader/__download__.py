@@ -43,8 +43,6 @@ class Download_JOB:
 
     @classmethod
     def __get_url(cls, c_track: Track, quality_download: str) -> dict:
-        print(c_track)
-        print('-------------------------------')
         if c_track.get('__TYPE__') == 'episode':
             return {
                 "media": [{
