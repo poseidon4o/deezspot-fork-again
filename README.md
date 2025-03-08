@@ -17,7 +17,7 @@ DeezSpot is a Python library that enables downloading songs, albums, playlists, 
 ### From PyPI (recommended)
 
 ```bash
-pip install deezspot
+pip install deezspot@https://github.com/Xoconoch/deezspot-fork-again.git
 ```
 
 ### From Source
