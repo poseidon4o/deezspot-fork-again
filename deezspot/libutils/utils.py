@@ -87,18 +87,33 @@ def __get_tronc(string):
         n_tronc = 242
     return n_tronc
 
-def apply_custom_format(format_str, metadata: dict) -> str:
+def apply_custom_format(format_str, metadata: dict, pad_tracks=True) -> str:
     """
     Replaces placeholders in the format string with values from metadata.
     Placeholders are denoted by %key%, for example: "%ar_album%/%album%".
+    The pad_tracks parameter controls whether track numbers are padded with leading zeros.
     """
     def replacer(match):
         key = match.group(1)
-        # Get the metadata value, convert to string and escape it.
+        
+        # Special handling for tracknum to support padding
+        if key == 'tracknum' and pad_tracks:
+            try:
+                # Get the raw track number and try to format it
+                raw_value = metadata.get(key, '')
+                if raw_value:
+                    # Format track number with padding if it's numeric
+                    return var_excape(f"{int(raw_value):02d}")
+            except (ValueError, TypeError):
+                # If there's any error, fall back to the default handling
+                pass
+        
+        # Default handling for all other keys
         return var_excape(str(metadata.get(key, '')))
+        
     return re.sub(r'%(\w+)%', replacer, format_str)
 
-def __get_dir(song_metadata, output_dir, method_save, custom_dir_format=None):
+def __get_dir(song_metadata, output_dir, method_save, custom_dir_format=None, pad_tracks=True):
     """
     Returns the final directory based either on a custom directory format string
     or the legacy method_save logic.
@@ -108,7 +123,7 @@ def __get_dir(song_metadata, output_dir, method_save, custom_dir_format=None):
     
     if custom_dir_format is not None:
         # Use the custom format string
-        dir_name = apply_custom_format(custom_dir_format, song_metadata)
+        dir_name = apply_custom_format(custom_dir_format, song_metadata, pad_tracks)
     else:
         # Legacy logic based on method_save (for episodes or albums)
         if 'show' in song_metadata and 'name' in song_metadata:
@@ -154,7 +169,7 @@ def set_path(
     
     if is_episode:
         if custom_track_format is not None:
-            song_name = apply_custom_format(custom_track_format, song_metadata)
+            song_name = apply_custom_format(custom_track_format, song_metadata, pad_tracks)
         else:
             show = var_excape(song_metadata.get('show', ''))
             episode = var_excape(song_metadata.get('name', ''))
@@ -168,7 +183,7 @@ def set_path(
                 song_name = "Unknown Episode"
     else:
         if custom_track_format is not None:
-            song_name = apply_custom_format(custom_track_format, song_metadata)
+            song_name = apply_custom_format(custom_track_format, song_metadata, pad_tracks)
         else:
             album = var_excape(song_metadata.get('album', ''))
             artist = var_excape(song_metadata.get('artist', ''))
@@ -200,7 +215,7 @@ def set_path(
     song_name = song_name[:max_length]
 
     # Build final path
-    song_dir = __get_dir(song_metadata, output_dir, method_save, custom_dir_format)
+    song_dir = __get_dir(song_metadata, output_dir, method_save, custom_dir_format, pad_tracks)
     __check_dir(song_dir)
     n_tronc = __get_tronc(song_name)
     song_path = f"{song_dir}/{song_name[:n_tronc]}{file_format}"
