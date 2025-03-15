@@ -1,9 +1,5 @@
 #!/usr/bin/python3
 
-# Add emoji handling settings
-PRESERVE_EMOJI = False  # Set to False to convert emojis to text descriptions
-EMOJI_FALLBACK = ""  # What to replace emojis with if not preserving them (empty = convert to text description)
-
 method_saves = ["0", "1", "2", "3"]
 
 sources = [

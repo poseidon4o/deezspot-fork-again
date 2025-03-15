@@ -8,15 +8,12 @@ from requests import get as req_get
 from zipfile import ZipFile, ZIP_DEFLATED
 from deezspot.models.track import Track
 from deezspot.exceptions import InvalidLink
-from deezspot.libutils.others_settings import supported_link, header, PRESERVE_EMOJI, EMOJI_FALLBACK
+from deezspot.libutils.others_settings import supported_link, header
 
 from os.path import (
     isdir, basename,
     join, isfile
 )
-
-import emoji
-import unicodedata
 
 def link_is_valid(link):
     netloc = urlparse(link).netloc
@@ -43,20 +40,6 @@ def __check_dir(directory):
         makedirs(directory)
 
 def var_excape(string):
-    # Handle None type
-    if string is None:
-        return ""
-    
-    # Convert to string if not already
-    if not isinstance(string, str):
-        string = str(string)
-    
-    # Replace emoji with text representation or keep them based on settings
-    string = handle_emoji(string)
-    
-    # Import settings here to get the latest values
-    from deezspot.libutils.others_settings import PRESERVE_EMOJI
-    
     # Enhance character replacement for filenames
     replacements = {
         "\\": "",
@@ -77,44 +60,10 @@ def var_excape(string):
     for old, new in replacements.items():
         string = string.replace(old, new)
     
-    # Remove control characters but preserve valid emoji (if they're supposed to be preserved)
-    if PRESERVE_EMOJI:
-        string = ''.join(char for char in string if char.isprintable() or is_emoji(char))
-    else:
-        string = ''.join(char for char in string if char.isprintable())
-    
-    # Remove control characters that might cause issues
-    string = ''.join(ch for ch in string if unicodedata.category(ch)[0] != 'C')
+    # Remove any other non-printable characters
+    string = ''.join(char for char in string if char.isprintable())
     
     return string.strip()
-
-def is_emoji(character):
-    """Check if a character is an emoji"""
-    return character in emoji.EMOJI_DATA
-
-def handle_emoji(text):
-    """
-    Handles emoji in text based on settings:
-    - If PRESERVE_EMOJI is True, emojis are kept in the filename
-    - If False, they're replaced with EMOJI_FALLBACK or their text description
-    """
-    # Import settings here to get the latest values
-    from deezspot.libutils.others_settings import PRESERVE_EMOJI, EMOJI_FALLBACK
-    
-    # If we should preserve emojis, return the text as is
-    if PRESERVE_EMOJI:
-        return text
-    
-    # If we have a custom fallback pattern
-    if EMOJI_FALLBACK:
-        # Use emoji library's replace_emoji to replace with custom text
-        return emoji.replace_emoji(text, replace=EMOJI_FALLBACK)
-    
-    # Convert emojis to their text description
-    demojized = emoji.demojize(text)
-    # Format the text description more nicely
-    result = demojized.replace(':', ' ').replace('_', ' ')
-    return result.strip()
 
 def convert_to_date(date: str):
     if date == "0000-00-00":
@@ -131,29 +80,12 @@ def what_kind(link):
     return url
 
 def __get_tronc(string):
-    """
-    Calculate safe length for filenames, properly handling multi-byte
-    characters like emojis.
-    """
-    # Maximum filename byte size (242 is used for safety margin)
-    max_bytes = 242
-    
-    # Get the UTF-8 encoded length
-    string_bytes = string.encode('utf-8')
-    l_encoded = len(string_bytes)
-    
-    if l_encoded <= max_bytes:
-        return len(string)  # If within limits, use the full string
-    
-    # Truncate to byte limit
-    safe_bytes = string_bytes[:max_bytes]
-    
-    # Handle potential cut in the middle of a multi-byte character
-    while safe_bytes and (safe_bytes[-1] & 0xC0) == 0x80:
-        safe_bytes = safe_bytes[:-1]
-    
-    # Return the character count of the safely truncated string
-    return len(safe_bytes.decode('utf-8', errors='ignore'))
+    l_encoded = len(string.encode())
+    if l_encoded > 242:
+        n_tronc = len(string) - l_encoded - 242
+    else:
+        n_tronc = 242
+    return n_tronc
 
 def apply_custom_format(format_str, metadata: dict, pad_tracks=True) -> str:
     """
