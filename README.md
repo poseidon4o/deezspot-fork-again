@@ -231,3 +231,23 @@ This project is licensed under the GNU Affero General Public License v3.0 - see 
 ## Credits
 
 This project is a fork of the [original deezspot library](https://github.com/jakiepari/deezspot).
+
+# Emoji Handling in Filenames
+
+DeezSpot includes advanced emoji handling in filenames. You can control this behavior through settings in `deezspot/libutils/others_settings.py`:
+
+- `PRESERVE_EMOJI = True`: Keep emojis in filenames (default)
+- `PRESERVE_EMOJI = False`: Replace emojis with text
+  - `EMOJI_FALLBACK = ""`: Replace emojis with their text description (e.g., "🎵" becomes "musical note")
+  - `EMOJI_FALLBACK = "[emoji]"`: Replace emojis with a custom string like "[emoji]"
+
+These settings allow for flexibility in how emojis are handled across different filesystems.
+
+# Track Number Padding
+
+DeezSpot allows controlling whether track numbers are padded with leading zeros in filenames:
+
+- `pad_tracks=True` (default): Produces filenames like "01. Track Title"
+- `pad_tracks=False`: Produces filenames like "1. Track Title"
+
+This parameter can be passed to any download function and works with both standard and custom format templates.
