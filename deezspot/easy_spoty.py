@@ -9,8 +9,11 @@ import os
 class Spo:
     __error_codes = [404, 400]
     
-    # Class-level API instance to store the last used API client
+    # Class-level API instance and credentials
     __api = None
+    __client_id = None
+    __client_secret = None
+    __initialized = False
 
     @classmethod
     def __init__(cls, client_id, client_secret):
@@ -29,32 +32,48 @@ class Spo:
             client_secret=client_secret
         )
         
+        # Store the credentials and API instance
+        cls.__client_id = client_id
+        cls.__client_secret = client_secret
         cls.__api = Spotify(
             auth_manager=client_credentials_manager
         )
+        cls.__initialized = True
 
     @classmethod
-    def __get_api(cls, client_id, client_secret):
+    def __check_initialized(cls):
+        """Check if the class has been initialized with credentials"""
+        if not cls.__initialized:
+            raise ValueError("Spotify API not initialized. Call Spo.__init__(client_id, client_secret) first.")
+
+    @classmethod
+    def __get_api(cls, client_id=None, client_secret=None):
         """
-        Get a Spotify API instance with the provided credentials.
+        Get a Spotify API instance with the provided credentials or use stored credentials.
         
         Args:
-            client_id (str): Spotify API client ID
-            client_secret (str): Spotify API client secret
+            client_id (str, optional): Spotify API client ID
+            client_secret (str, optional): Spotify API client secret
             
         Returns:
             A Spotify API instance
         """
-        # Create a new API instance with the provided credentials
-        client_credentials_manager = SpotifyClientCredentials(
-            client_id=client_id,
-            client_secret=client_secret
-        )
-        return Spotify(auth_manager=client_credentials_manager)
+        # If new credentials are provided, create a new API instance
+        if client_id and client_secret:
+            client_credentials_manager = SpotifyClientCredentials(
+                client_id=client_id,
+                client_secret=client_secret
+            )
+            return Spotify(auth_manager=client_credentials_manager)
+        
+        # Otherwise, use the existing class-level API
+        cls.__check_initialized()
+        return cls.__api
 
     @classmethod
-    def __lazy(cls, results, api):
+    def __lazy(cls, results, api=None):
         """Process paginated results"""
+        api = api or cls.__api
         albums = results['items']
 
         while results['next']:
@@ -64,14 +83,14 @@ class Spo:
         return results
 
     @classmethod
-    def get_track(cls, ids, client_id, client_secret):
+    def get_track(cls, ids, client_id=None, client_secret=None):
         """
         Get track information by ID.
         
         Args:
             ids (str): Spotify track ID
-            client_id (str): Spotify client ID
-            client_secret (str): Spotify client secret
+            client_id (str, optional): Optional custom Spotify client ID
+            client_secret (str, optional): Optional custom Spotify client secret
             
         Returns:
             dict: Track information
@@ -86,14 +105,14 @@ class Spo:
         return track_json
 
     @classmethod
-    def get_album(cls, ids, client_id, client_secret):
+    def get_album(cls, ids, client_id=None, client_secret=None):
         """
         Get album information by ID.
         
         Args:
             ids (str): Spotify album ID
-            client_id (str): Spotify client ID
-            client_secret (str): Spotify client secret
+            client_id (str, optional): Optional custom Spotify client ID
+            client_secret (str, optional): Optional custom Spotify client secret
             
         Returns:
             dict: Album information
@@ -111,14 +130,14 @@ class Spo:
         return album_json
 
     @classmethod
-    def get_playlist(cls, ids, client_id, client_secret):
+    def get_playlist(cls, ids, client_id=None, client_secret=None):
         """
         Get playlist information by ID.
         
         Args:
             ids (str): Spotify playlist ID
-            client_id (str): Spotify client ID
-            client_secret (str): Spotify client secret
+            client_id (str, optional): Optional custom Spotify client ID
+            client_secret (str, optional): Optional custom Spotify client secret
             
         Returns:
             dict: Playlist information
@@ -136,14 +155,14 @@ class Spo:
         return playlist_json
 
     @classmethod
-    def get_episode(cls, ids, client_id, client_secret):
+    def get_episode(cls, ids, client_id=None, client_secret=None):
         """
         Get episode information by ID.
         
         Args:
             ids (str): Spotify episode ID
-            client_id (str): Spotify client ID
-            client_secret (str): Spotify client secret
+            client_id (str, optional): Optional custom Spotify client ID
+            client_secret (str, optional): Optional custom Spotify client secret
             
         Returns:
             dict: Episode information
@@ -166,30 +185,27 @@ class Spo:
             query (str): Search query
             search_type (str, optional): Type of search ('track', 'album', 'artist', 'playlist')
             limit (int, optional): Maximum number of results to return
-            client_id (str): Spotify client ID
-            client_secret (str): Spotify client secret
+            client_id (str, optional): Optional custom Spotify client ID
+            client_secret (str, optional): Optional custom Spotify client secret
             
         Returns:
             dict: Search results
         """
-        if not client_id or not client_secret:
-            raise ValueError("Spotify API credentials required. Provide client_id and client_secret.")
-            
         api = cls.__get_api(client_id, client_secret)
         search = api.search(q=query, type=search_type, limit=limit)
         return search
 
     @classmethod
-    def get_artist(cls, ids, client_id, client_secret, album_type='album,single,compilation,appears_on', limit=50):
+    def get_artist(cls, ids, album_type='album,single,compilation,appears_on', limit=50, client_id=None, client_secret=None):
         """
         Get artist information and discography by ID.
         
         Args:
             ids (str): Spotify artist ID
-            client_id (str): Spotify client ID
-            client_secret (str): Spotify client secret
             album_type (str, optional): Types of albums to include
             limit (int, optional): Maximum number of results
+            client_id (str, optional): Optional custom Spotify client ID
+            client_secret (str, optional): Optional custom Spotify client secret
             
         Returns:
             dict: Artist discography
