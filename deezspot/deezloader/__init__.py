@@ -81,7 +81,8 @@ class DeeLogin:
         not_interface=stock_not_interface,
         method_save=method_save,
         custom_dir_format=None,
-        custom_track_format=None
+        custom_track_format=None,
+        pad_tracks=True
     ) -> Track:
 
         link_is_valid(link_track)
@@ -111,6 +112,8 @@ class DeeLogin:
         # New custom formatting preferences:
         preferences.custom_dir_format = custom_dir_format
         preferences.custom_track_format = custom_track_format
+        # Track number padding option
+        preferences.pad_tracks = pad_tracks
 
         track = DW_TRACK(preferences).dw()
 
@@ -126,7 +129,8 @@ class DeeLogin:
         make_zip=stock_zip,
         method_save=method_save,
         custom_dir_format=None,
-        custom_track_format=None
+        custom_track_format=None,
+        pad_tracks=True
     ) -> Album:
 
         link_is_valid(link_album)
@@ -154,6 +158,8 @@ class DeeLogin:
         # New custom formatting preferences:
         preferences.custom_dir_format = custom_dir_format
         preferences.custom_track_format = custom_track_format
+        # Track number padding option
+        preferences.pad_tracks = pad_tracks
 
         album = DW_ALBUM(preferences).dw()
 
@@ -169,7 +175,8 @@ class DeeLogin:
         make_zip=stock_zip,
         method_save=method_save,
         custom_dir_format=None,
-        custom_track_format=None
+        custom_track_format=None,
+        pad_tracks=True
     ) -> Playlist:
 
         link_is_valid(link_playlist)
@@ -207,6 +214,8 @@ class DeeLogin:
         # New custom formatting preferences:
         preferences.custom_dir_format = custom_dir_format
         preferences.custom_track_format = custom_track_format
+        # Track number padding option
+        preferences.pad_tracks = pad_tracks
 
         playlist = DW_PLAYLIST(preferences).dw()
 
@@ -221,7 +230,8 @@ class DeeLogin:
         not_interface=stock_not_interface,
         method_save=method_save,
         custom_dir_format=None,
-        custom_track_format=None
+        custom_track_format=None,
+        pad_tracks=True
     ) -> list[Track]:
 
         link_is_valid(link_artist)
@@ -236,7 +246,8 @@ class DeeLogin:
                 recursive_download, not_interface,
                 method_save=method_save,
                 custom_dir_format=custom_dir_format,
-                custom_track_format=custom_track_format
+                custom_track_format=custom_track_format,
+                pad_tracks=pad_tracks
             )
             for track in playlist_json
         ]
@@ -273,7 +284,8 @@ class DeeLogin:
         not_interface=stock_not_interface,
         method_save=method_save,
         custom_dir_format=None,
-        custom_track_format=None
+        custom_track_format=None,
+        pad_tracks=True
     ) -> Track:
 
         track_link_dee = self.convert_spoty_to_dee_link_track(link_track)
@@ -287,7 +299,8 @@ class DeeLogin:
             not_interface=not_interface,
             method_save=method_save,
             custom_dir_format=custom_dir_format,
-            custom_track_format=custom_track_format
+            custom_track_format=custom_track_format,
+            pad_tracks=pad_tracks
         )
 
         return track
@@ -352,7 +365,8 @@ class DeeLogin:
         make_zip=stock_zip,
         method_save=method_save,
         custom_dir_format=None,
-        custom_track_format=None
+        custom_track_format=None,
+        pad_tracks=True
     ) -> Album:
 
         link_dee = self.convert_spoty_to_dee_link_album(link_album)
@@ -363,7 +377,8 @@ class DeeLogin:
             recursive_download, not_interface,
             make_zip, method_save,
             custom_dir_format=custom_dir_format,
-            custom_track_format=custom_track_format
+            custom_track_format=custom_track_format,
+            pad_tracks=pad_tracks
         )
 
         return album
@@ -378,7 +393,8 @@ class DeeLogin:
         make_zip=stock_zip,
         method_save=method_save,
         custom_dir_format=None,
-        custom_track_format=None
+        custom_track_format=None,
+        pad_tracks=True
     ) -> Playlist:
 
         link_is_valid(link_playlist)
@@ -450,7 +466,8 @@ class DeeLogin:
                     not_interface=not_interface,
                     method_save=method_save,
                     custom_dir_format=custom_dir_format,
-                    custom_track_format=custom_track_format
+                    custom_track_format=custom_track_format,
+                    pad_tracks=pad_tracks
                 )
                 tracks.append(downloaded_track)
             except (TrackNotFound, NoDataApi) as e:
@@ -500,7 +517,8 @@ class DeeLogin:
         not_interface=stock_not_interface,
         method_save=method_save,
         custom_dir_format=None,
-        custom_track_format=None
+        custom_track_format=None,
+        pad_tracks=True
     ) -> Track:
 
         query = f"track:{song} artist:{artist}"
@@ -528,7 +546,8 @@ class DeeLogin:
             not_interface=not_interface,
             method_save=method_save,
             custom_dir_format=custom_dir_format,
-            custom_track_format=custom_track_format
+            custom_track_format=custom_track_format,
+            pad_tracks=pad_tracks
         )
 
         return track
@@ -543,7 +562,8 @@ class DeeLogin:
         not_interface=stock_not_interface,
         method_save=method_save,
         custom_dir_format=None,
-        custom_track_format=None
+        custom_track_format=None,
+        pad_tracks=True
     ) -> Episode:
         
         link_is_valid(link_episode)
@@ -582,6 +602,8 @@ class DeeLogin:
         # New custom formatting preferences:
         preferences.custom_dir_format = custom_dir_format
         preferences.custom_track_format = custom_track_format
+        # Track number padding option
+        preferences.pad_tracks = pad_tracks
 
         episode = DW_EPISODE(preferences).dw()
 
@@ -597,7 +619,8 @@ class DeeLogin:
         make_zip=stock_zip,
         method_save=method_save,
         custom_dir_format=None,
-        custom_track_format=None
+        custom_track_format=None,
+        pad_tracks=True
     ) -> Smart:
 
         link_is_valid(link)
@@ -628,7 +651,8 @@ class DeeLogin:
                 not_interface=not_interface,
                 method_save=method_save,
                 custom_dir_format=custom_dir_format,
-                custom_track_format=custom_track_format
+                custom_track_format=custom_track_format,
+                pad_tracks=pad_tracks
             )
             smart.type = "track"
             smart.track = track
@@ -651,7 +675,8 @@ class DeeLogin:
                 make_zip=make_zip,
                 method_save=method_save,
                 custom_dir_format=custom_dir_format,
-                custom_track_format=custom_track_format
+                custom_track_format=custom_track_format,
+                pad_tracks=pad_tracks
             )
             smart.type = "album"
             smart.album = album
@@ -674,7 +699,8 @@ class DeeLogin:
                 make_zip=make_zip,
                 method_save=method_save,
                 custom_dir_format=custom_dir_format,
-                custom_track_format=custom_track_format
+                custom_track_format=custom_track_format,
+                pad_tracks=pad_tracks
             )
             smart.type = "playlist"
             smart.playlist = playlist

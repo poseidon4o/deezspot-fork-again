@@ -146,7 +146,8 @@ def set_path(
     song_quality, file_format, method_save,
     is_episode=False,
     custom_dir_format=None,
-    custom_track_format=None
+    custom_track_format=None,
+    pad_tracks=True
 ):
     if song_metadata is None:
         raise ValueError("song_metadata cannot be None")
@@ -179,7 +180,10 @@ def set_path(
                 song_name = f"{album} CD {discnum} TRACK {tracknum}"
             elif method_save == 1:
                 try:
-                    tracknum = f"{int(tracknum):02d}"  # Format as two digits
+                    if pad_tracks:
+                        tracknum = f"{int(tracknum):02d}"  # Format as two digits with padding
+                    else:
+                        tracknum = f"{int(tracknum)}"  # Format without padding
                 except (ValueError, TypeError):
                     pass  # Fallback to raw value
                 tracknum_clean = var_excape(str(tracknum))

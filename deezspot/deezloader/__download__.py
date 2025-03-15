@@ -234,6 +234,7 @@ class EASY_DW:
         # If the Preferences object has custom formatting strings, pass them on.
         custom_dir_format = getattr(self.__preferences, 'custom_dir_format', None)
         custom_track_format = getattr(self.__preferences, 'custom_track_format', None)
+        pad_tracks = getattr(self.__preferences, 'pad_tracks', True)
         self.__song_path = set_path(
             self.__song_metadata,
             self.__output_dir,
@@ -241,12 +242,14 @@ class EASY_DW:
             self.__file_format,
             self.__method_save,
             custom_dir_format=custom_dir_format,
-            custom_track_format=custom_track_format
+            custom_track_format=custom_track_format,
+            pad_tracks=pad_tracks
         )
     
     def __set_episode_path(self) -> None:
         custom_dir_format = getattr(self.__preferences, 'custom_dir_format', None)
         custom_track_format = getattr(self.__preferences, 'custom_track_format', None)
+        pad_tracks = getattr(self.__preferences, 'pad_tracks', True)
         self.__song_path = set_path(
             self.__song_metadata,
             self.__output_dir,
@@ -255,7 +258,8 @@ class EASY_DW:
             self.__method_save,
             is_episode=True,
             custom_dir_format=custom_dir_format,
-            custom_track_format=custom_track_format
+            custom_track_format=custom_track_format,
+            pad_tracks=pad_tracks
         )
 
     def __write_track(self) -> None:

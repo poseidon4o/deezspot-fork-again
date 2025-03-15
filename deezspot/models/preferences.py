@@ -15,4 +15,5 @@ class Preferences:
         self.make_zip = None
         self.real_time_dl = None ,
         self.custom_dir_format = None,
-        self.custom_track_format = None
+        self.custom_track_format = None,
+        self.pad_tracks = True  # Default to padded track numbers (01, 02, etc.)

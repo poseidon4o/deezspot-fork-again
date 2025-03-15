@@ -76,7 +76,8 @@ class SpoLogin:
         is_thread=is_thread,
         real_time_dl=stock_real_time_dl,
         custom_dir_format=None,
-        custom_track_format=None
+        custom_track_format=None,
+        pad_tracks=True
     ) -> Track:
         try:
             link_is_valid(link_track)
@@ -98,6 +99,8 @@ class SpoLogin:
             # New custom formatting preferences
             preferences.custom_dir_format = custom_dir_format
             preferences.custom_track_format = custom_track_format
+            # Track number padding option
+            preferences.pad_tracks = pad_tracks
 
             if not is_thread:
                 track = DW_TRACK(preferences).dw()
@@ -121,7 +124,8 @@ class SpoLogin:
         is_thread=is_thread,
         real_time_dl=stock_real_time_dl,
         custom_dir_format=None,
-        custom_track_format=None
+        custom_track_format=None,
+        pad_tracks=True
     ) -> Album:
         try:
             link_is_valid(link_album)
@@ -147,6 +151,8 @@ class SpoLogin:
             # New custom formatting preferences
             preferences.custom_dir_format = custom_dir_format
             preferences.custom_track_format = custom_track_format
+            # Track number padding option
+            preferences.pad_tracks = pad_tracks
 
             if not is_thread:
                 album = DW_ALBUM(preferences).dw()
@@ -170,7 +176,8 @@ class SpoLogin:
         is_thread=is_thread,
         real_time_dl=stock_real_time_dl,
         custom_dir_format=None,
-        custom_track_format=None
+        custom_track_format=None,
+        pad_tracks=True
     ) -> Playlist:
         try:
             link_is_valid(link_playlist)
@@ -209,6 +216,8 @@ class SpoLogin:
             # New custom formatting preferences
             preferences.custom_dir_format = custom_dir_format
             preferences.custom_track_format = custom_track_format
+            # Track number padding option
+            preferences.pad_tracks = pad_tracks
 
             if not is_thread:
                 playlist = DW_PLAYLIST(preferences).dw()
@@ -231,7 +240,8 @@ class SpoLogin:
         is_thread=is_thread,
         real_time_dl=stock_real_time_dl,
         custom_dir_format=None,
-        custom_track_format=None
+        custom_track_format=None,
+        pad_tracks=True
     ) -> Episode:
         try:
             link_is_valid(link_episode)
@@ -255,6 +265,8 @@ class SpoLogin:
             # New custom formatting preferences
             preferences.custom_dir_format = custom_dir_format
             preferences.custom_track_format = custom_track_format
+            # Track number padding option
+            preferences.pad_tracks = pad_tracks
 
             if not is_thread:
                 episode = DW_EPISODE(preferences).dw()
@@ -280,7 +292,8 @@ class SpoLogin:
         is_thread=is_thread,
         real_time_dl=stock_real_time_dl,
         custom_dir_format=None,
-        custom_track_format=None
+        custom_track_format=None,
+        pad_tracks=True
     ):
         """
         Download all albums (or a subset based on album_type and limit) from an artist.
@@ -309,7 +322,8 @@ class SpoLogin:
                     is_thread=is_thread,
                     real_time_dl=real_time_dl,
                     custom_dir_format=custom_dir_format,
-                    custom_track_format=custom_track_format
+                    custom_track_format=custom_track_format,
+                    pad_tracks=pad_tracks
                 )
                 downloaded_albums.append(downloaded_album)
             return downloaded_albums
@@ -328,7 +342,8 @@ class SpoLogin:
         method_save=method_save,
         real_time_dl=stock_real_time_dl,
         custom_dir_format=None,
-        custom_track_format=None
+        custom_track_format=None,
+        pad_tracks=True
     ) -> Smart:
         try:
             link_is_valid(link)
@@ -352,7 +367,8 @@ class SpoLogin:
                     method_save=method_save,
                     real_time_dl=real_time_dl,
                     custom_dir_format=custom_dir_format,
-                    custom_track_format=custom_track_format
+                    custom_track_format=custom_track_format,
+                    pad_tracks=pad_tracks
                 )
                 smart.type = "track"
                 smart.track = track
@@ -371,7 +387,8 @@ class SpoLogin:
                     method_save=method_save,
                     real_time_dl=real_time_dl,
                     custom_dir_format=custom_dir_format,
-                    custom_track_format=custom_track_format
+                    custom_track_format=custom_track_format,
+                    pad_tracks=pad_tracks
                 )
                 smart.type = "album"
                 smart.album = album
@@ -390,7 +407,8 @@ class SpoLogin:
                     method_save=method_save,
                     real_time_dl=real_time_dl,
                     custom_dir_format=custom_dir_format,
-                    custom_track_format=custom_track_format
+                    custom_track_format=custom_track_format,
+                    pad_tracks=pad_tracks
                 )
                 smart.type = "playlist"
                 smart.playlist = playlist
@@ -408,7 +426,8 @@ class SpoLogin:
                     method_save=method_save,
                     real_time_dl=real_time_dl,
                     custom_dir_format=custom_dir_format,
-                    custom_track_format=custom_track_format
+                    custom_track_format=custom_track_format,
+                    pad_tracks=pad_tracks
                 )
                 smart.type = "episode"
                 smart.episode = episode
