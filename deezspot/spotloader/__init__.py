@@ -36,7 +36,7 @@ from deezspot.libutils.others_settings import (
     is_thread,
     stock_real_time_dl
 )
-Spo()
+Spo.__init__(client_id, client_secret)
 
 class SpoLogin:
     def __init__(

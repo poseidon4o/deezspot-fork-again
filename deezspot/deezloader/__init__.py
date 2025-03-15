@@ -40,7 +40,7 @@ from deezspot.libutils.others_settings import (
     method_save,
 )
 
-Spo()
+Spo.__init__(client_id, client_secret)
 API()
 
 class DeeLogin:
