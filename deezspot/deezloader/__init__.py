@@ -82,7 +82,10 @@ class DeeLogin:
         method_save=method_save,
         custom_dir_format=None,
         custom_track_format=None,
-        pad_tracks=True
+        pad_tracks=True,
+        initial_retry_delay=30,
+        retry_delay_increase=30,
+        max_retries=5
     ) -> Track:
 
         link_is_valid(link_track)
@@ -114,6 +117,10 @@ class DeeLogin:
         preferences.custom_track_format = custom_track_format
         # Track number padding option
         preferences.pad_tracks = pad_tracks
+        # Retry parameters
+        preferences.initial_retry_delay = initial_retry_delay
+        preferences.retry_delay_increase = retry_delay_increase
+        preferences.max_retries = max_retries
 
         track = DW_TRACK(preferences).dw()
 
@@ -130,7 +137,10 @@ class DeeLogin:
         method_save=method_save,
         custom_dir_format=None,
         custom_track_format=None,
-        pad_tracks=True
+        pad_tracks=True,
+        initial_retry_delay=30,
+        retry_delay_increase=30,
+        max_retries=5
     ) -> Album:
 
         link_is_valid(link_album)
@@ -160,6 +170,10 @@ class DeeLogin:
         preferences.custom_track_format = custom_track_format
         # Track number padding option
         preferences.pad_tracks = pad_tracks
+        # Retry parameters
+        preferences.initial_retry_delay = initial_retry_delay
+        preferences.retry_delay_increase = retry_delay_increase
+        preferences.max_retries = max_retries
 
         album = DW_ALBUM(preferences).dw()
 
@@ -176,7 +190,10 @@ class DeeLogin:
         method_save=method_save,
         custom_dir_format=None,
         custom_track_format=None,
-        pad_tracks=True
+        pad_tracks=True,
+        initial_retry_delay=30,
+        retry_delay_increase=30,
+        max_retries=5
     ) -> Playlist:
 
         link_is_valid(link_playlist)
@@ -216,6 +233,10 @@ class DeeLogin:
         preferences.custom_track_format = custom_track_format
         # Track number padding option
         preferences.pad_tracks = pad_tracks
+        # Retry parameters
+        preferences.initial_retry_delay = initial_retry_delay
+        preferences.retry_delay_increase = retry_delay_increase
+        preferences.max_retries = max_retries
 
         playlist = DW_PLAYLIST(preferences).dw()
 
@@ -285,7 +306,10 @@ class DeeLogin:
         method_save=method_save,
         custom_dir_format=None,
         custom_track_format=None,
-        pad_tracks=True
+        pad_tracks=True,
+        initial_retry_delay=30,
+        retry_delay_increase=30,
+        max_retries=5
     ) -> Track:
 
         track_link_dee = self.convert_spoty_to_dee_link_track(link_track)
@@ -300,7 +324,10 @@ class DeeLogin:
             method_save=method_save,
             custom_dir_format=custom_dir_format,
             custom_track_format=custom_track_format,
-            pad_tracks=pad_tracks
+            pad_tracks=pad_tracks,
+            initial_retry_delay=initial_retry_delay,
+            retry_delay_increase=retry_delay_increase,
+            max_retries=max_retries
         )
 
         return track
@@ -366,7 +393,10 @@ class DeeLogin:
         method_save=method_save,
         custom_dir_format=None,
         custom_track_format=None,
-        pad_tracks=True
+        pad_tracks=True,
+        initial_retry_delay=30,
+        retry_delay_increase=30,
+        max_retries=5
     ) -> Album:
 
         link_dee = self.convert_spoty_to_dee_link_album(link_album)
@@ -378,7 +408,10 @@ class DeeLogin:
             make_zip, method_save,
             custom_dir_format=custom_dir_format,
             custom_track_format=custom_track_format,
-            pad_tracks=pad_tracks
+            pad_tracks=pad_tracks,
+            initial_retry_delay=initial_retry_delay,
+            retry_delay_increase=retry_delay_increase,
+            max_retries=max_retries
         )
 
         return album
@@ -394,7 +427,10 @@ class DeeLogin:
         method_save=method_save,
         custom_dir_format=None,
         custom_track_format=None,
-        pad_tracks=True
+        pad_tracks=True,
+        initial_retry_delay=30,
+        retry_delay_increase=30,
+        max_retries=5
     ) -> Playlist:
 
         link_is_valid(link_playlist)
@@ -467,7 +503,10 @@ class DeeLogin:
                     method_save=method_save,
                     custom_dir_format=custom_dir_format,
                     custom_track_format=custom_track_format,
-                    pad_tracks=pad_tracks
+                    pad_tracks=pad_tracks,
+                    initial_retry_delay=initial_retry_delay,
+                    retry_delay_increase=retry_delay_increase,
+                    max_retries=max_retries
                 )
                 tracks.append(downloaded_track)
             except (TrackNotFound, NoDataApi) as e:
@@ -563,7 +602,10 @@ class DeeLogin:
         method_save=method_save,
         custom_dir_format=None,
         custom_track_format=None,
-        pad_tracks=True
+        pad_tracks=True,
+        initial_retry_delay=30,
+        retry_delay_increase=30,
+        max_retries=5
     ) -> Episode:
         
         link_is_valid(link_episode)
@@ -604,6 +646,10 @@ class DeeLogin:
         preferences.custom_track_format = custom_track_format
         # Track number padding option
         preferences.pad_tracks = pad_tracks
+        # Retry parameters
+        preferences.initial_retry_delay = initial_retry_delay
+        preferences.retry_delay_increase = retry_delay_increase
+        preferences.max_retries = max_retries
 
         episode = DW_EPISODE(preferences).dw()
 
@@ -620,7 +666,10 @@ class DeeLogin:
         method_save=method_save,
         custom_dir_format=None,
         custom_track_format=None,
-        pad_tracks=True
+        pad_tracks=True,
+        initial_retry_delay=30,
+        retry_delay_increase=30,
+        max_retries=5
     ) -> Smart:
 
         link_is_valid(link)
@@ -652,7 +701,10 @@ class DeeLogin:
                 method_save=method_save,
                 custom_dir_format=custom_dir_format,
                 custom_track_format=custom_track_format,
-                pad_tracks=pad_tracks
+                pad_tracks=pad_tracks,
+                initial_retry_delay=initial_retry_delay,
+                retry_delay_increase=retry_delay_increase,
+                max_retries=max_retries
             )
             smart.type = "track"
             smart.track = track
@@ -676,7 +728,10 @@ class DeeLogin:
                 method_save=method_save,
                 custom_dir_format=custom_dir_format,
                 custom_track_format=custom_track_format,
-                pad_tracks=pad_tracks
+                pad_tracks=pad_tracks,
+                initial_retry_delay=initial_retry_delay,
+                retry_delay_increase=retry_delay_increase,
+                max_retries=max_retries
             )
             smart.type = "album"
             smart.album = album
@@ -700,7 +755,10 @@ class DeeLogin:
                 method_save=method_save,
                 custom_dir_format=custom_dir_format,
                 custom_track_format=custom_track_format,
-                pad_tracks=pad_tracks
+                pad_tracks=pad_tracks,
+                initial_retry_delay=initial_retry_delay,
+                retry_delay_increase=retry_delay_increase,
+                max_retries=max_retries
             )
             smart.type = "playlist"
             smart.playlist = playlist

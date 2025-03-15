@@ -236,8 +236,10 @@ class EASY_DW:
             return self.__c_track
 
         retries = 0
-        retry_delay = 30  # start with 30 seconds delay
-        max_retries = 5
+        # Use the customizable retry parameters
+        retry_delay = getattr(self.__preferences, 'initial_retry_delay', 30)  # Default to 30 seconds
+        retry_delay_increase = getattr(self.__preferences, 'retry_delay_increase', 30)  # Default to 30 seconds
+        max_retries = getattr(self.__preferences, 'max_retries', 5)  # Default to 5 retries
 
         while True:
             try:
@@ -299,7 +301,7 @@ class EASY_DW:
                 if retries >= max_retries or GLOBAL_RETRY_COUNT >= GLOBAL_MAX_RETRIES:
                     raise Exception(f"Maximum retry limit reached (local: {max_retries}, global: {GLOBAL_MAX_RETRIES}).")
                 time.sleep(retry_delay)
-                retry_delay += 30
+                retry_delay += retry_delay_increase  # Use the custom retry delay increase
         try:
             self.__convert_audio()
         except Exception as e:
@@ -313,7 +315,7 @@ class EASY_DW:
                 "error": str(e)
             }))
             time.sleep(retry_delay)
-            retry_delay += 30
+            retry_delay += retry_delay_increase  # Use the custom retry delay increase
             self.__convert_audio()
 
         self.__write_track()
@@ -328,9 +330,12 @@ class EASY_DW:
         return self.__c_track
 
     def download_eps(self) -> Episode:
-        retry_delay = 30
+        # Use the customizable retry parameters
+        retry_delay = getattr(self.__preferences, 'initial_retry_delay', 30)  # Default to 30 seconds
+        retry_delay_increase = getattr(self.__preferences, 'retry_delay_increase', 30)  # Default to 30 seconds
+        max_retries = getattr(self.__preferences, 'max_retries', 5)  # Default to 5 retries
+        
         retries = 0
-        max_retries = 5
         if isfile(self.__song_path) and check_track(self.__c_episode):
             ans = input(
                 f"Episode \"{self.__song_path}\" already exists, do you want to redownload it?(y or n):"
@@ -363,7 +368,7 @@ class EASY_DW:
                 if retries >= max_retries or GLOBAL_RETRY_COUNT >= GLOBAL_MAX_RETRIES:
                     raise Exception(f"Maximum retry limit reached (local: {max_retries}, global: {GLOBAL_MAX_RETRIES}).")
                 time.sleep(retry_delay)
-                retry_delay += 30
+                retry_delay += retry_delay_increase  # Use the custom retry delay increase
         total_size = stream.input_stream.size
         os.makedirs(dirname(self.__song_path), exist_ok=True)
         with open(self.__song_path, "wb") as f:
@@ -404,7 +409,7 @@ class EASY_DW:
                 "error": str(e)
             }))
             time.sleep(retry_delay)
-            retry_delay += 30
+            retry_delay += retry_delay_increase  # Use the custom retry delay increase
             self.__convert_audio()
         self.__write_episode()
         write_tags(self.__c_episode)

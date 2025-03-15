@@ -77,7 +77,10 @@ class SpoLogin:
         real_time_dl=stock_real_time_dl,
         custom_dir_format=None,
         custom_track_format=None,
-        pad_tracks=True
+        pad_tracks=True,
+        initial_retry_delay=30,
+        retry_delay_increase=30,
+        max_retries=5
     ) -> Track:
         try:
             link_is_valid(link_track)
@@ -101,6 +104,10 @@ class SpoLogin:
             preferences.custom_track_format = custom_track_format
             # Track number padding option
             preferences.pad_tracks = pad_tracks
+            # Retry parameters
+            preferences.initial_retry_delay = initial_retry_delay
+            preferences.retry_delay_increase = retry_delay_increase
+            preferences.max_retries = max_retries
 
             if not is_thread:
                 track = DW_TRACK(preferences).dw()
@@ -125,7 +132,10 @@ class SpoLogin:
         real_time_dl=stock_real_time_dl,
         custom_dir_format=None,
         custom_track_format=None,
-        pad_tracks=True
+        pad_tracks=True,
+        initial_retry_delay=30,
+        retry_delay_increase=30,
+        max_retries=5
     ) -> Album:
         try:
             link_is_valid(link_album)
@@ -153,6 +163,10 @@ class SpoLogin:
             preferences.custom_track_format = custom_track_format
             # Track number padding option
             preferences.pad_tracks = pad_tracks
+            # Retry parameters
+            preferences.initial_retry_delay = initial_retry_delay
+            preferences.retry_delay_increase = retry_delay_increase
+            preferences.max_retries = max_retries
 
             if not is_thread:
                 album = DW_ALBUM(preferences).dw()
@@ -177,7 +191,10 @@ class SpoLogin:
         real_time_dl=stock_real_time_dl,
         custom_dir_format=None,
         custom_track_format=None,
-        pad_tracks=True
+        pad_tracks=True,
+        initial_retry_delay=30,
+        retry_delay_increase=30,
+        max_retries=5
     ) -> Playlist:
         try:
             link_is_valid(link_playlist)
@@ -218,6 +235,10 @@ class SpoLogin:
             preferences.custom_track_format = custom_track_format
             # Track number padding option
             preferences.pad_tracks = pad_tracks
+            # Retry parameters
+            preferences.initial_retry_delay = initial_retry_delay
+            preferences.retry_delay_increase = retry_delay_increase
+            preferences.max_retries = max_retries
 
             if not is_thread:
                 playlist = DW_PLAYLIST(preferences).dw()
@@ -241,7 +262,10 @@ class SpoLogin:
         real_time_dl=stock_real_time_dl,
         custom_dir_format=None,
         custom_track_format=None,
-        pad_tracks=True
+        pad_tracks=True,
+        initial_retry_delay=30,
+        retry_delay_increase=30,
+        max_retries=5
     ) -> Episode:
         try:
             link_is_valid(link_episode)
@@ -267,6 +291,10 @@ class SpoLogin:
             preferences.custom_track_format = custom_track_format
             # Track number padding option
             preferences.pad_tracks = pad_tracks
+            # Retry parameters
+            preferences.initial_retry_delay = initial_retry_delay
+            preferences.retry_delay_increase = retry_delay_increase
+            preferences.max_retries = max_retries
 
             if not is_thread:
                 episode = DW_EPISODE(preferences).dw()
@@ -293,7 +321,10 @@ class SpoLogin:
         real_time_dl=stock_real_time_dl,
         custom_dir_format=None,
         custom_track_format=None,
-        pad_tracks=True
+        pad_tracks=True,
+        initial_retry_delay=30,
+        retry_delay_increase=30,
+        max_retries=5
     ):
         """
         Download all albums (or a subset based on album_type and limit) from an artist.
@@ -323,7 +354,10 @@ class SpoLogin:
                     real_time_dl=real_time_dl,
                     custom_dir_format=custom_dir_format,
                     custom_track_format=custom_track_format,
-                    pad_tracks=pad_tracks
+                    pad_tracks=pad_tracks,
+                    initial_retry_delay=initial_retry_delay,
+                    retry_delay_increase=retry_delay_increase,
+                    max_retries=max_retries
                 )
                 downloaded_albums.append(downloaded_album)
             return downloaded_albums
@@ -343,7 +377,10 @@ class SpoLogin:
         real_time_dl=stock_real_time_dl,
         custom_dir_format=None,
         custom_track_format=None,
-        pad_tracks=True
+        pad_tracks=True,
+        initial_retry_delay=30,
+        retry_delay_increase=30,
+        max_retries=5
     ) -> Smart:
         try:
             link_is_valid(link)
@@ -368,7 +405,10 @@ class SpoLogin:
                     real_time_dl=real_time_dl,
                     custom_dir_format=custom_dir_format,
                     custom_track_format=custom_track_format,
-                    pad_tracks=pad_tracks
+                    pad_tracks=pad_tracks,
+                    initial_retry_delay=initial_retry_delay,
+                    retry_delay_increase=retry_delay_increase,
+                    max_retries=max_retries
                 )
                 smart.type = "track"
                 smart.track = track
@@ -388,7 +428,10 @@ class SpoLogin:
                     real_time_dl=real_time_dl,
                     custom_dir_format=custom_dir_format,
                     custom_track_format=custom_track_format,
-                    pad_tracks=pad_tracks
+                    pad_tracks=pad_tracks,
+                    initial_retry_delay=initial_retry_delay,
+                    retry_delay_increase=retry_delay_increase,
+                    max_retries=max_retries
                 )
                 smart.type = "album"
                 smart.album = album
@@ -408,7 +451,10 @@ class SpoLogin:
                     real_time_dl=real_time_dl,
                     custom_dir_format=custom_dir_format,
                     custom_track_format=custom_track_format,
-                    pad_tracks=pad_tracks
+                    pad_tracks=pad_tracks,
+                    initial_retry_delay=initial_retry_delay,
+                    retry_delay_increase=retry_delay_increase,
+                    max_retries=max_retries
                 )
                 smart.type = "playlist"
                 smart.playlist = playlist
@@ -427,7 +473,10 @@ class SpoLogin:
                     real_time_dl=real_time_dl,
                     custom_dir_format=custom_dir_format,
                     custom_track_format=custom_track_format,
-                    pad_tracks=pad_tracks
+                    pad_tracks=pad_tracks,
+                    initial_retry_delay=initial_retry_delay,
+                    retry_delay_increase=retry_delay_increase,
+                    max_retries=max_retries
                 )
                 smart.type = "episode"
                 smart.episode = episode
