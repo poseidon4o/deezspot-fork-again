@@ -36,14 +36,22 @@ from deezspot.libutils.others_settings import (
     is_thread,
     stock_real_time_dl
 )
-Spo.__init__(client_id, client_secret)
 
 class SpoLogin:
     def __init__(
         self,
         credentials_path: str,
+        spotify_client_id: str = None,
+        spotify_client_secret: str = None
     ) -> None:
         self.credentials_path = credentials_path
+        self.spotify_client_id = spotify_client_id
+        self.spotify_client_secret = spotify_client_secret
+        
+        # Initialize Spotify API with credentials if provided
+        if spotify_client_id and spotify_client_secret:
+            Spo.__init__(client_id=spotify_client_id, client_secret=spotify_client_secret)
+            
         self.__initialize_session()
 
     def __initialize_session(self) -> None:
@@ -118,6 +126,7 @@ class SpoLogin:
         try:
             link_is_valid(link_album)
             ids = get_ids(link_album)
+            # Use stored credentials for API calls
             album_json = Spo.get_album(ids)
             song_metadata = tracking_album(album_json)
 
@@ -168,6 +177,7 @@ class SpoLogin:
             ids = get_ids(link_playlist)
 
             song_metadata = []
+            # Use stored credentials for API calls
             playlist_json = Spo.get_playlist(ids)
 
             for track in playlist_json['tracks']['items']:
@@ -226,6 +236,7 @@ class SpoLogin:
         try:
             link_is_valid(link_episode)
             ids = get_ids(link_episode)
+            # Use stored credentials for API calls
             episode_json = Spo.get_episode(ids)
             episode_metadata = tracking_episode(ids)
 

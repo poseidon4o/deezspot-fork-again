@@ -40,7 +40,6 @@ from deezspot.libutils.others_settings import (
     method_save,
 )
 
-Spo.__init__(client_id, client_secret)
 API()
 
 class DeeLogin:
@@ -48,9 +47,20 @@ class DeeLogin:
         self,
         arl=None,
         email=None,
-        password=None
+        password=None,
+        spotify_client_id=None,
+        spotify_client_secret=None
     ) -> None:
 
+        # Store Spotify credentials
+        self.spotify_client_id = spotify_client_id
+        self.spotify_client_secret = spotify_client_secret
+        
+        # Initialize Spotify API if credentials are provided
+        if spotify_client_id and spotify_client_secret:
+            Spo.__init__(client_id=spotify_client_id, client_secret=spotify_client_secret)
+
+        # Initialize Deezer API
         if arl:
             self.__gw_api = API_GW(arl=arl)
         else:
@@ -58,6 +68,9 @@ class DeeLogin:
                 email=email,
                 password=password
             )
+            
+        # Reference to the Spotify search functionality
+        self.__spo = Spo
 
     def download_trackdee(
         self, link_track,
@@ -234,6 +247,7 @@ class DeeLogin:
         link_is_valid(link_track)
         ids = get_ids(link_track)
 
+        # Use stored credentials for API calls
         track_json = Spo.get_track(ids)
         external_ids = track_json['external_ids']
 
@@ -283,6 +297,7 @@ class DeeLogin:
         ids = get_ids(link_album)
         link_dee = None
 
+        # Use stored credentials for API calls
         tracks = Spo.get_album(ids)
 
         try:
@@ -307,6 +322,7 @@ class DeeLogin:
             tot2 = None
             for track in tracks:
                 track_link = track['external_urls']['spotify']
+                # Use stored credentials for API calls
                 track_info = Spo.get_track(track_link)
                 try:
                     isrc = f"isrc:{track_info['external_ids']['isrc']}"
@@ -368,6 +384,7 @@ class DeeLogin:
         link_is_valid(link_playlist)
         ids = get_ids(link_playlist)
 
+        # Use stored credentials for API calls
         playlist_json = Spo.get_playlist(ids)
         playlist_name = playlist_json['name']
         total_tracks = playlist_json['tracks']['total']
@@ -457,7 +474,7 @@ class DeeLogin:
         with open(m3u_path, "w", encoding="utf-8") as m3u_file:
             # Write the m3u header
             m3u_file.write("#EXTM3U\n")
-            # Append each successfully downloaded track’s relative path
+            # Append each successfully downloaded track's relative path
             for track in tracks:
                 if isinstance(track, Track) and track.success and hasattr(track, 'song_path') and track.song_path:
                     # Calculate the relative path from the m3u folder to the track file
@@ -487,7 +504,13 @@ class DeeLogin:
     ) -> Track:
 
         query = f"track:{song} artist:{artist}"
-        search = self.__spo.search(query)
+        # Use the stored credentials when searching
+        search = self.__spo.search(
+            query, 
+            client_id=self.spotify_client_id, 
+            client_secret=self.spotify_client_secret
+        ) if not self.__spo._Spo__initialized else self.__spo.search(query)
+        
         items = search['tracks']['items']
 
         if len(items) == 0:
