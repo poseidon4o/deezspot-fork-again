@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 import os
 import json
+import logging
 from deezspot.deezloader.dee_api import API
 from deezspot.easy_spoty import Spo
 from deezspot.deezloader.deegw_api import API_GW
@@ -39,8 +40,12 @@ from deezspot.libutils.others_settings import (
     stock_zip,
     method_save,
 )
+from deezspot.libutils.logging_utils import ProgressReporter, logger
 
 API()
+
+# Create a logger for the deezspot library
+logger = logging.getLogger('deezspot')
 
 class DeeLogin:
     def __init__(
@@ -49,7 +54,9 @@ class DeeLogin:
         email=None,
         password=None,
         spotify_client_id=None,
-        spotify_client_secret=None
+        spotify_client_secret=None,
+        progress_callback=None,
+        silent=False
     ) -> None:
 
         # Store Spotify credentials
@@ -71,6 +78,13 @@ class DeeLogin:
             
         # Reference to the Spotify search functionality
         self.__spo = Spo
+        
+        # Configure progress reporting
+        self.progress_reporter = ProgressReporter(callback=progress_callback, silent=silent)
+
+    def report_progress(self, progress_data):
+        """Report progress using the configured reporter."""
+        self.progress_reporter.report(progress_data)
 
     def download_trackdee(
         self, link_track,
@@ -444,24 +458,24 @@ class DeeLogin:
         playlist = Playlist()
         tracks = playlist.tracks
 
-        # Initializing status
-        print(json.dumps({
+        # Initializing status - replaced print with report_progress
+        self.report_progress({
             "status": "initializing",
             "type": "playlist",
             "name": playlist_name,
             "total_tracks": total_tracks
-        }))
+        })
 
         for index, item in enumerate(playlist_tracks, 1):
             is_track = item.get('track')
             if not is_track:
                 # Progress status for an invalid track item
-                print(json.dumps({
+                self.report_progress({
                     "status": "progress",
                     "type": "playlist",
                     "track": "Unknown Track",
                     "current_track": f"{index}/{total_tracks}"
-                }))
+                })
                 continue
 
             track_info = is_track
@@ -472,22 +486,22 @@ class DeeLogin:
             external_urls = track_info.get('external_urls', {})
             if not external_urls:
                 # Progress status for unavailable track
-                print(json.dumps({
+                self.report_progress({
                     "status": "progress",
                     "type": "playlist",
                     "track": track_name,
                     "current_track": f"{index}/{total_tracks}"
-                }))
-                print(f"The track \"{track_name}\" is not available on Spotify :(")
+                })
+                logger.warning(f"The track \"{track_name}\" is not available on Spotify :(")
                 continue
 
             # Progress status before download attempt
-            print(json.dumps({
+            self.report_progress({
                 "status": "progress",
                 "type": "playlist",
                 "track": track_name,
                 "current_track": f"{index}/{total_tracks}"
-            }))
+            })
 
             link_track = external_urls['spotify']
 
@@ -510,16 +524,16 @@ class DeeLogin:
                 )
                 tracks.append(downloaded_track)
             except (TrackNotFound, NoDataApi) as e:
-                print(f"Failed to download track: {track_name} - {artist_name}")
+                logger.error(f"Failed to download track: {track_name} - {artist_name}")
                 tracks.append(f"{track_name} - {artist_name}")
 
         # Done status
-        print(json.dumps({
+        self.report_progress({
             "status": "done",
             "type": "playlist",
             "name": playlist_name,
             "total_tracks": total_tracks
-        }))
+        })
 
         # === New m3u File Creation Section ===
         # Create a subfolder "playlists" inside the output directory
@@ -536,7 +550,7 @@ class DeeLogin:
                     # Calculate the relative path from the m3u folder to the track file
                     relative_song_path = os.path.relpath(track.song_path, start=playlist_m3u_dir)
                     m3u_file.write(f"{relative_song_path}\n")
-        print(f"Created m3u playlist file at: {m3u_path}")
+        logger.info(f"Created m3u playlist file at: {m3u_path}")
         # === End m3u File Creation Section ===
 
         if make_zip:
@@ -682,6 +696,14 @@ class DeeLogin:
             source = "https://deezer.com"
 
         smart.source = source
+        
+        # Add progress reporting for the smart downloader
+        self.report_progress({
+            "status": "initializing",
+            "type": "smart_download",
+            "link": link,
+            "source": source
+        })
 
         if "track/" in link:
             if "spotify.com" in link:
@@ -762,5 +784,13 @@ class DeeLogin:
             )
             smart.type = "playlist"
             smart.playlist = playlist
+            
+        # Report completion
+        self.report_progress({
+            "status": "done",
+            "type": "smart_download",
+            "source": source,
+            "content_type": smart.type
+        })
 
         return smart
