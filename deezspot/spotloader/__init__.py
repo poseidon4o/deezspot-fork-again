@@ -36,14 +36,16 @@ from deezspot.libutils.others_settings import (
     is_thread,
     stock_real_time_dl
 )
-from deezspot.libutils.logging_utils import logger
+from deezspot.libutils.logging_utils import logger, ProgressReporter
 
 class SpoLogin:
     def __init__(
         self,
         credentials_path: str,
         spotify_client_id: str = None,
-        spotify_client_secret: str = None
+        spotify_client_secret: str = None,
+        progress_callback = None,
+        silent: bool = False
     ) -> None:
         self.credentials_path = credentials_path
         self.spotify_client_id = spotify_client_id
@@ -54,7 +56,14 @@ class SpoLogin:
             Spo.__init__(client_id=spotify_client_id, client_secret=spotify_client_secret)
             logger.info("Initialized Spotify API with provided credentials")
             
+        # Configure progress reporting
+        self.progress_reporter = ProgressReporter(callback=progress_callback, silent=silent)
+        
         self.__initialize_session()
+
+    def report_progress(self, progress_data):
+        """Report progress using the configured reporter."""
+        self.progress_reporter.report(progress_data)
 
     def __initialize_session(self) -> None:
         try:
@@ -69,6 +78,7 @@ class SpoLogin:
                 raise FileNotFoundError("Please fill your credentials.json location!")
 
             Download_JOB(session)
+            Download_JOB.set_progress_reporter(self.progress_reporter)
         except Exception as e:
             logger.error(f"Failed to initialize Spotify session: {str(e)}")
             raise
