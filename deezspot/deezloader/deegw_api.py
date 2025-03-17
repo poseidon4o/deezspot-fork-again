@@ -12,6 +12,8 @@ from requests import (
     get as req_get,
     post as req_post,
 )
+from deezspot.libutils.logging_utils import logger
+
 class API_GW:
 
     @classmethod

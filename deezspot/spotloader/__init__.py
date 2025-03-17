@@ -36,6 +36,7 @@ from deezspot.libutils.others_settings import (
     is_thread,
     stock_real_time_dl
 )
+from deezspot.libutils.logging_utils import logger
 
 class SpoLogin:
     def __init__(
@@ -51,19 +52,26 @@ class SpoLogin:
         # Initialize Spotify API with credentials if provided
         if spotify_client_id and spotify_client_secret:
             Spo.__init__(client_id=spotify_client_id, client_secret=spotify_client_secret)
+            logger.info("Initialized Spotify API with provided credentials")
             
         self.__initialize_session()
 
     def __initialize_session(self) -> None:
-        session_builder = Session.Builder()
-        session_builder.conf.stored_credentials_file = self.credentials_path
+        try:
+            session_builder = Session.Builder()
+            session_builder.conf.stored_credentials_file = self.credentials_path
 
-        if isfile(self.credentials_path):
-            session = session_builder.stored_file().create()
-        else:
-            raise FileNotFoundError("Please fill your credentials.json location!")
+            if isfile(self.credentials_path):
+                session = session_builder.stored_file().create()
+                logger.info("Successfully initialized Spotify session")
+            else:
+                logger.error("Credentials file not found")
+                raise FileNotFoundError("Please fill your credentials.json location!")
 
-        Download_JOB(session)
+            Download_JOB(session)
+        except Exception as e:
+            logger.error(f"Failed to initialize Spotify session: {str(e)}")
+            raise
 
     def download_track(
         self, link_track,
@@ -86,6 +94,8 @@ class SpoLogin:
             link_is_valid(link_track)
             ids = get_ids(link_track)
             song_metadata = tracking(ids)
+            
+            logger.info(f"Starting download for track: {song_metadata.get('music', 'Unknown')} - {song_metadata.get('artist', 'Unknown')}")
 
             preferences = Preferences()
             preferences.real_time_dl = real_time_dl
@@ -99,12 +109,9 @@ class SpoLogin:
             preferences.not_interface = not_interface
             preferences.method_save = method_save
             preferences.is_episode = False
-            # New custom formatting preferences
             preferences.custom_dir_format = custom_dir_format
             preferences.custom_track_format = custom_track_format
-            # Track number padding option
             preferences.pad_tracks = pad_tracks
-            # Retry parameters
             preferences.initial_retry_delay = initial_retry_delay
             preferences.retry_delay_increase = retry_delay_increase
             preferences.max_retries = max_retries
@@ -116,6 +123,7 @@ class SpoLogin:
 
             return track
         except Exception as e:
+            logger.error(f"Failed to download track: {str(e)}")
             traceback.print_exc()
             raise e
 
@@ -143,6 +151,8 @@ class SpoLogin:
             # Use stored credentials for API calls
             album_json = Spo.get_album(ids)
             song_metadata = tracking_album(album_json)
+            
+            logger.info(f"Starting download for album: {song_metadata.get('album', 'Unknown')} - {song_metadata.get('ar_album', 'Unknown')}")
 
             preferences = Preferences()
             preferences.real_time_dl = real_time_dl
@@ -158,12 +168,9 @@ class SpoLogin:
             preferences.method_save = method_save
             preferences.make_zip = make_zip
             preferences.is_episode = False
-            # New custom formatting preferences
             preferences.custom_dir_format = custom_dir_format
             preferences.custom_track_format = custom_track_format
-            # Track number padding option
             preferences.pad_tracks = pad_tracks
-            # Retry parameters
             preferences.initial_retry_delay = initial_retry_delay
             preferences.retry_delay_increase = retry_delay_increase
             preferences.max_retries = max_retries
@@ -175,6 +182,7 @@ class SpoLogin:
 
             return album
         except Exception as e:
+            logger.error(f"Failed to download album: {str(e)}")
             traceback.print_exc()
             raise e
 
@@ -203,6 +211,8 @@ class SpoLogin:
             song_metadata = []
             # Use stored credentials for API calls
             playlist_json = Spo.get_playlist(ids)
+            
+            logger.info(f"Starting download for playlist: {playlist_json.get('name', 'Unknown')}")
 
             for track in playlist_json['tracks']['items']:
                 is_track = track['track']
@@ -211,6 +221,7 @@ class SpoLogin:
                 external_urls = is_track['external_urls']
                 if not external_urls:
                     c_song_metadata = f"The track \"{is_track['name']}\" is not available on Spotify :("
+                    logger.warning(f"Track not available: {is_track['name']}")
                 else:
                     ids = get_ids(external_urls['spotify'])
                     c_song_metadata = tracking(ids)
@@ -230,12 +241,9 @@ class SpoLogin:
             preferences.method_save = method_save
             preferences.make_zip = make_zip
             preferences.is_episode = False
-            # New custom formatting preferences
             preferences.custom_dir_format = custom_dir_format
             preferences.custom_track_format = custom_track_format
-            # Track number padding option
             preferences.pad_tracks = pad_tracks
-            # Retry parameters
             preferences.initial_retry_delay = initial_retry_delay
             preferences.retry_delay_increase = retry_delay_increase
             preferences.max_retries = max_retries
@@ -247,6 +255,7 @@ class SpoLogin:
 
             return playlist
         except Exception as e:
+            logger.error(f"Failed to download playlist: {str(e)}")
             traceback.print_exc()
             raise e
 
@@ -273,6 +282,8 @@ class SpoLogin:
             # Use stored credentials for API calls
             episode_json = Spo.get_episode(ids)
             episode_metadata = tracking_episode(ids)
+            
+            logger.info(f"Starting download for episode: {episode_metadata.get('name', 'Unknown')} - {episode_metadata.get('show', 'Unknown')}")
 
             preferences = Preferences()
             preferences.real_time_dl = real_time_dl
@@ -286,12 +297,9 @@ class SpoLogin:
             preferences.not_interface = not_interface
             preferences.method_save = method_save
             preferences.is_episode = True
-            # New custom formatting preferences
             preferences.custom_dir_format = custom_dir_format
             preferences.custom_track_format = custom_track_format
-            # Track number padding option
             preferences.pad_tracks = pad_tracks
-            # Retry parameters
             preferences.initial_retry_delay = initial_retry_delay
             preferences.retry_delay_increase = retry_delay_increase
             preferences.max_retries = max_retries
@@ -303,6 +311,7 @@ class SpoLogin:
 
             return episode
         except Exception as e:
+            logger.error(f"Failed to download episode: {str(e)}")
             traceback.print_exc()
             raise e
 
@@ -335,11 +344,16 @@ class SpoLogin:
             discography = Spo.get_artist(ids, album_type=album_type, limit=limit)
             albums = discography.get('items', [])
             if not albums:
+                logger.warning("No albums found for the provided artist")
                 raise Exception("No albums found for the provided artist.")
+                
+            logger.info(f"Starting download for artist discography: {discography.get('name', 'Unknown')}")
+            
             downloaded_albums = []
             for album in albums:
                 album_url = album.get('external_urls', {}).get('spotify')
                 if not album_url:
+                    logger.warning(f"No URL found for album: {album.get('name', 'Unknown')}")
                     continue
                 downloaded_album = self.download_album(
                     album_url,
@@ -362,6 +376,7 @@ class SpoLogin:
                 downloaded_albums.append(downloaded_album)
             return downloaded_albums
         except Exception as e:
+            logger.error(f"Failed to download artist discography: {str(e)}")
             traceback.print_exc()
             raise e
 
@@ -390,6 +405,8 @@ class SpoLogin:
             if "spotify.com" in link:
                 source = "https://spotify.com"
             smart.source = source
+            
+            logger.info(f"Starting smart download for: {link}")
 
             if "track/" in link:
                 if not "spotify.com" in link:
@@ -483,5 +500,6 @@ class SpoLogin:
 
             return smart
         except Exception as e:
+            logger.error(f"Failed to perform smart download: {str(e)}")
             traceback.print_exc()
             raise e

@@ -38,6 +38,7 @@ from mutagen.mp3 import MP3
 from mutagen.id3 import ID3
 from mutagen.mp4 import MP4
 from mutagen import File
+from deezspot.libutils.logging_utils import logger
 
 class Download_JOB:
 
@@ -298,7 +299,7 @@ class EASY_DW:
         current_title = self.__song_metadata['music']
         current_album = self.__song_metadata['album']
         if self.__track_already_exists(current_title, current_album):
-            print(json.dumps({
+            logger.info(json.dumps({
                 "status": "skipped",
                 "type": self.__download_type,
                 "album": current_album,
@@ -315,7 +316,7 @@ class EASY_DW:
             return skipped_track
 
         # Initial download start status
-        print(json.dumps({
+        logger.info(json.dumps({
             "status": "downloading",
             "type": self.__download_type,
             "album": self.__song_metadata['album'],
@@ -332,7 +333,7 @@ class EASY_DW:
                     raise e
             else:
                 self.download_try()
-                print(json.dumps({
+                logger.info(json.dumps({
                     "status": "done",
                     "type": "track",
                     "album": self.__song_metadata['album'],
@@ -397,7 +398,7 @@ class EASY_DW:
                 artist = self.__song_metadata['artist']
 
                 if self.__file_format == '.flac':
-                    print(f"\n⚠ {song} - {artist} is not available in FLAC format. Trying MP3...")
+                    logger.warning(f"\n⚠ {song} - {artist} is not available in FLAC format. Trying MP3...")
                     self.__quality_download = 'MP3_320'
                     self.__file_format = '.mp3'
                     self.__song_path = self.__song_path.rsplit('.', 1)[0] + '.mp3'
@@ -605,7 +606,7 @@ class DW_ALBUM:
         medias = Download_JOB.check_sources(
             infos_dw, self.__quality_download
         )
-        print(json.dumps({
+        logger.info(json.dumps({
             "status": "initializing",
             "type": "album",
             "album": self.__song_metadata['album'],
@@ -662,7 +663,7 @@ class DW_ALBUM:
 
             # Print progress status for each track
             current_track_str = f"{track_number}/{total_tracks}"
-            print(json.dumps({
+            logger.info(json.dumps({
                 "status": "progress",
                 "type": "album",
                 "track": c_song_metadata['music'],
@@ -698,7 +699,7 @@ class DW_ALBUM:
                 except TrackNotFound:
                     track = Track(c_song_metadata, None, None, None, None, None)
                     track.success = False
-                    print(f"Track not found: {song} :(")
+                    logger.warning(f"Track not found: {song} :(")
             tracks.append(track)
 
         if self.__make_zip:
@@ -715,7 +716,7 @@ class DW_ALBUM:
             )
             album.zip_path = zip_name
 
-        print(json.dumps({
+        logger.info(json.dumps({
             "status": "done",
             "type": "album",
             "album": self.__song_metadata['album'],
@@ -746,7 +747,7 @@ class DW_PLAYLIST:
         playlist_name = self.__json_data['title']
         total_tracks = len(infos_dw)
 
-        print(json.dumps({
+        logger.info(json.dumps({
             "status": "initializing",
             "type": "playlist",
             "name": playlist_name,
@@ -787,7 +788,7 @@ class DW_PLAYLIST:
             track = EASY_DW(c_infos_dw, c_preferences).easy_dw()
 
             current_track_str = f"{idx}/{total_tracks}"
-            print(json.dumps({
+            logger.info(json.dumps({
                 "status": "progress",
                 "type": "playlist",
                 "track": c_song_metadata['music'],
@@ -796,7 +797,7 @@ class DW_PLAYLIST:
 
             if not track.success:
                 song = f"{c_song_metadata['music']} - {c_song_metadata['artist']}"
-                print(f"Cannot download {song}")
+                logger.warning(f"Cannot download {song}")
 
             tracks.append(track)
 
@@ -817,7 +818,7 @@ class DW_PLAYLIST:
             create_zip(tracks, zip_name=zip_name)
             playlist.zip_path = zip_name
 
-        print(json.dumps({
+        logger.info(json.dumps({
             "status": "done",
             "type": "playlist",
             "name": playlist_name,

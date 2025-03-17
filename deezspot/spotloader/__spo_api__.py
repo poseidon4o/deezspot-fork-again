@@ -4,6 +4,7 @@ from deezspot.easy_spoty import Spo
 from datetime import datetime
 from deezspot.libutils.utils import convert_to_date
 import traceback
+from deezspot.libutils.logging_utils import logger
 
 def tracking(ids, album=None):
     datas = {}
@@ -61,9 +62,12 @@ def tracking(ids, album=None):
 
         datas['gain'] = "Unknown"
         datas['ids'] = ids
+        
+        logger.debug(f"Successfully tracked metadata for track {ids}")
+        
     except Exception as e:
-        traceback.print_exc()  # Print traceback
-        # Optionally, handle or log the exception here
+        logger.error(f"Failed to track metadata for track {ids}: {str(e)}")
+        traceback.print_exc()
         return None
 
     return datas
@@ -114,9 +118,12 @@ def tracking_album(album_json):
             for key, item in sm_items:
                 if type(item) is list:
                     song_metadata[key].append(detas[key])
+                    
+        logger.debug(f"Successfully tracked metadata for album {album_json['id']}")
+                    
     except Exception as e:
-        traceback.print_exc()  # Print traceback
-        # Optionally, handle or log the exception here
+        logger.error(f"Failed to track album metadata: {str(e)}")
+        traceback.print_exc()
         return None
 
     return song_metadata
@@ -146,8 +153,12 @@ def tracking_episode(ids):
         datas['show'] = json_episode.get('show', {}).get('name', '')
         datas['publisher'] = json_episode.get('show', {}).get('publisher', '')
         datas['ids'] = ids
+        
+        logger.debug(f"Successfully tracked metadata for episode {ids}")
+        
     except Exception as e:
-        traceback.print_exc() 
+        logger.error(f"Failed to track episode metadata: {str(e)}")
+        traceback.print_exc()
         return None
 
     return datas

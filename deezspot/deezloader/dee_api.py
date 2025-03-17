@@ -11,6 +11,7 @@ from deezspot.exceptions import (
     QuotaExceeded,
     TrackNotFound,
 )
+from deezspot.libutils.logging_utils import logger
 
 class API:
 
@@ -18,23 +19,19 @@ class API:
 	def __init__(cls):
 		cls.__api_link = "https://api.deezer.com/"
 		cls.__cover = "https://e-cdns-images.dzcdn.net/images/cover/%s/{}-000000-80-0-0.jpg"
+		cls.headers = {
+			"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+		}
 
 	@classmethod
 	def __get_api(cls, url, quota_exceeded = False):
-		json = req_get(url, headers = header).json()
-
-		if "error" in json:
-			if json['error']['message'] == "no data":
-				raise NoDataApi("No data avalaible :(")
-
-			elif json['error']['message'] == "Quota limit exceeded":
-				if not quota_exceeded:
-					sleep(0.8)
-					json = cls.__get_api(url, True)
-				else:
-					raise QuotaExceeded
-
-		return json
+		try:
+			response = req_get(url, headers=cls.headers)
+			response.raise_for_status()
+			return response.json()
+		except requests.exceptions.RequestException as e:
+			logger.error(f"Failed to get API data from {url}: {str(e)}")
+			raise
 
 	@classmethod
 	def get_chart(cls, index = 0):
@@ -44,22 +41,22 @@ class API:
 		return infos
 
 	@classmethod
-	def get_track(cls, ids):
-		url = f"{cls.__api_link}track/{ids}"
+	def get_track(cls, track_id):
+		url = f"{cls.__api_link}track/{track_id}"
 		infos = cls.__get_api(url)
 
 		return infos
 
 	@classmethod
-	def get_album(cls, ids):
-		url = f"{cls.__api_link}album/{ids}"
+	def get_album(cls, album_id):
+		url = f"{cls.__api_link}album/{album_id}"
 		infos = cls.__get_api(url)
 
 		return infos
 
 	@classmethod
-	def get_playlist(cls, ids):
-		url = f"{cls.__api_link}playlist/{ids}"
+	def get_playlist(cls, playlist_id):
+		url = f"{cls.__api_link}playlist/{playlist_id}"
 		infos = cls.__get_api(url)
 
 		return infos
@@ -114,24 +111,13 @@ class API:
 		return infos
 
 	@classmethod
-	def search(cls, query):
-		url = f"{cls.__api_link}search/?q={query}"
-		infos = cls.__get_api(url)
-
-		if infos['total'] == 0:
-			raise NoDataApi(query)
-
-		return infos
-
-	@classmethod
-	def search(cls, query, limit=None):
-		url = f"{cls.__api_link}search/?q={query}"
-		
-		# Add the limit parameter to the URL if it is provided
-		if limit is not None:
-			url += f"&limit={limit}"
-		
-		infos = cls.__get_api(url)
+	def search(cls, query, limit=25):
+		url = f"{cls.__api_link}search"
+		params = {
+			"q": query,
+			"limit": limit
+		}
+		infos = cls.__get_api(url, params=params)
 
 		if infos['total'] == 0:
 			raise NoDataApi(query)

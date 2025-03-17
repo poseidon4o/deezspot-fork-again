@@ -33,6 +33,7 @@ from mutagen.easyid3 import EasyID3
 from mutagen.oggvorbis import OggVorbis
 from mutagen.flac import FLAC
 from mutagen.mp4 import MP4
+from deezspot.libutils.logging_utils import logger
 
 # --- Global retry counter variables ---
 GLOBAL_RETRY_COUNT = 0
@@ -146,8 +147,8 @@ class EASY_DW:
         image = request(pic).content
         self.__song_metadata['image'] = image
 
-        # Print initial "downloading" status for track
-        print(json.dumps({
+        # Log initial "downloading" status for track
+        logger.info(json.dumps({
             "status": "downloading",
             "type": "track",
             "album": self.__song_metadata.get("album", ""),
@@ -158,32 +159,37 @@ class EASY_DW:
         try:
             self.download_try()
         except Exception as e:
+            logger.error(f"Download failed: {str(e)}")
             traceback.print_exc()
             raise e
 
         return self.__c_track
 
     def track_exists(self, title, album):
-        # Ensure the final song path is set
-        if not hasattr(self, '_EASY_DW__song_path') or not self.__song_path:
-            self.__set_song_path()
+        try:
+            # Ensure the final song path is set
+            if not hasattr(self, '_EASY_DW__song_path') or not self.__song_path:
+                self.__set_song_path()
 
-        # Use only the final directory for scanning
-        final_dir = os.path.dirname(self.__song_path)
-        
-        # If the final directory doesn't exist, there are no files to check
-        if not os.path.exists(final_dir):
+            # Use only the final directory for scanning
+            final_dir = os.path.dirname(self.__song_path)
+            
+            # If the final directory doesn't exist, there are no files to check
+            if not os.path.exists(final_dir):
+                return False
+
+            # Iterate over files only in the final directory
+            for file in os.listdir(final_dir):
+                if file.lower().endswith(('.mp3', '.ogg', '.flac', '.wav', '.m4a', '.opus')):
+                    file_path = os.path.join(final_dir, file)
+                    existing_title, existing_album = self.read_metadata(file_path)
+                    if existing_title == title and existing_album == album:
+                        logger.info(f"Found existing track: {title} - {album}")
+                        return True
             return False
-
-        # Iterate over files only in the final directory
-        for file in os.listdir(final_dir):
-            if file.lower().endswith(('.mp3', '.ogg', '.flac', '.wav', '.m4a', '.opus')):
-                file_path = os.path.join(final_dir, file)
-                existing_title, existing_album = self.read_metadata(file_path)
-                if existing_title == title and existing_album == album:
-                    return True
-        return False
-
+        except Exception as e:
+            logger.error(f"Error checking if track exists: {str(e)}")
+            return False
 
     def read_metadata(self, file_path):
         try:
@@ -199,8 +205,8 @@ class EASY_DW:
                     audio = EasyID3(file_path)
                     title = audio.get('title', [None])[0]
                     album = audio.get('album', [None])[0]
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.error(f"Error reading MP3 metadata: {str(e)}")
             elif file_path.endswith('.ogg'):
                 audio = OggVorbis(file_path)
                 title = audio.get('title', [None])[0]
@@ -217,7 +223,7 @@ class EASY_DW:
                 return None, None
             return title, album
         except Exception as e:
-            print(f"Error reading metadata from {file_path}: {e}")
+            logger.error(f"Error reading metadata from {file_path}: {str(e)}")
             return None, None
 
     def download_try(self) -> Track:
@@ -226,9 +232,9 @@ class EASY_DW:
         current_artist = self.__song_metadata.get('artist')
 
         if self.track_exists(current_title, current_album):
-            print(json.dumps({
+            logger.info(json.dumps({
                 "status": "done",
-                "type": "track",
+                "type": "track", 
                 "album": current_album,
                 "song": current_title,
                 "artist": current_artist
@@ -267,7 +273,7 @@ class EASY_DW:
                                     break
                                 f.write(chunk)
                                 bytes_written += len(chunk)
-                                print(json.dumps({
+                                logger.info(json.dumps({
                                     "status": "real_time",
                                     "song": self.__song_metadata.get("music", ""),
                                     "artist": self.__song_metadata.get("artist", ""),
@@ -289,7 +295,7 @@ class EASY_DW:
                 global GLOBAL_RETRY_COUNT
                 GLOBAL_RETRY_COUNT += 1
                 retries += 1
-                print(json.dumps({
+                logger.warning(json.dumps({
                     "status": "retrying",
                     "retry_count": retries,
                     "seconds_left": retry_delay,
@@ -305,7 +311,7 @@ class EASY_DW:
         try:
             self.__convert_audio()
         except Exception as e:
-            print(json.dumps({
+            logger.error(json.dumps({
                 "status": "retrying",
                 "retry_count": retries,
                 "action": "convert_audio",
@@ -320,7 +326,7 @@ class EASY_DW:
 
         self.__write_track()
         write_tags(self.__c_track)
-        print(json.dumps({
+        logger.info(json.dumps({
             "status": "done",
             "type": "track",
             "album": self.__song_metadata.get("album", ""),
