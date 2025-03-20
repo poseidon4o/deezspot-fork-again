@@ -1,3 +1,5 @@
 2025-03-20 17:20:10,997 - deezspot - INFO - {"status": "downloading", "type": "track", "album": "Discovery", "song": "Harder, Better, Faster, Stronger", "artist": "Daft Punk"}
 2025-03-20 17:20:14,754 - deezspot - INFO - {"status": "done", "type": "track", "album": "Discovery", "song": "Harder, Better, Faster, Stronger", "artist": "Daft Punk"}
 2025-03-20 17:20:33,285 - deezspot - INFO - {"status": "skipped", "type": "track", "album": "Discovery", "song": "Harder, Better, Faster, Stronger", "artist": "Daft Punk", "reason": "Track already exists"}
+2025-03-20 17:24:49,785 - deezspot - INFO - {"status": "downloading", "type": "track", "album": "Por Mi M\u00e9xico (Remix)", "song": "Por Mi M\u00e9xico (Remix)", "artist": "Lefty Sm & Santa Fe Klan & Dharius & C-kan & MC Davo & Neto Pe\u00f1a"}
+2025-03-20 17:24:55,856 - deezspot - INFO - {"status": "done", "type": "track", "album": "Por Mi M\u00e9xico (Remix)", "song": "Por Mi M\u00e9xico (Remix)", "artist": "Lefty Sm & Santa Fe Klan & Dharius & C-kan & MC Davo & Neto Pe\u00f1a"}

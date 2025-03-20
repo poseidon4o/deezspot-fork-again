@@ -30,3 +30,4 @@ venv/
 deetest.py
 creds/
 .cache
+deezspot.log

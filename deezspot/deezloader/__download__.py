@@ -75,7 +75,14 @@ class Download_JOB:
                     raise ValueError("Track ID is missing")
                 
                 n_quality = qualities[quality_download]['n_quality']
+                
+                # Create the song hash using the correct parameter order
+                # Note: For legacy Deezer API, the order is: MD5 + Media Version + Track ID
                 c_song_hash = gen_song_hash(track_id, md5_origin, media_version)
+                
+                # Log the hash generation parameters for debugging
+                logger.debug(f"Generating song hash with: track_id={track_id}, md5_origin={md5_origin}, media_version={media_version}")
+                
                 c_media_url = API_GW.get_song_url(md5_origin[0], c_song_hash)
                 
                 return {
@@ -449,13 +456,22 @@ class EASY_DW:
             # Get track IDs and encryption information
             # The enhanced check_track_ids function will determine the encryption type
             self.__fallback_ids = check_track_ids(self.__infos_dw)
-            logger.debug(f"Using encryption type: {self.__fallback_ids.get('encryption_type', 'unknown')}")
+            encryption_type = self.__fallback_ids.get('encryption_type', 'unknown')
+            logger.debug(f"Using encryption type: {encryption_type}")
 
             try:
                 self.__write_track()
                 
                 # decryptfile now supports both AES and Blowfish encryption methods
-                decryptfile(c_crypted_audio, self.__fallback_ids, self.__song_path)
+                try:
+                    decryptfile(c_crypted_audio, self.__fallback_ids, self.__song_path)
+                    logger.debug(f"Successfully decrypted track using {encryption_type} encryption")
+                except Exception as decrypt_error:
+                    # Detailed error logging for debugging
+                    logger.error(f"Decryption error ({encryption_type}): {str(decrypt_error)}")
+                    if "Data must be padded" in str(decrypt_error):
+                        logger.error("This appears to be a padding issue with Blowfish decryption")
+                    raise
                 
                 self.__add_more_tags()
                 write_tags(self.__c_track)
@@ -463,7 +479,11 @@ class EASY_DW:
                 if isfile(self.__song_path):
                     os.remove(self.__song_path)
                 logger.error(f"Failed to process track: {str(e)}")
-                raise TrackNotFound(f"Failed to process {self.__song_path}: {str(e)}")
+                # Provide a more helpful error message
+                error_msg = str(e)
+                if "Data must be padded" in error_msg:
+                    error_msg = f"Decryption error (padding issue) - Try a different quality setting or download format"
+                raise TrackNotFound(f"Failed to process {self.__song_path}: {error_msg}")
 
             return self.__c_track
 

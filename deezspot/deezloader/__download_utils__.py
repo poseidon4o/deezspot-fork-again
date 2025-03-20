@@ -42,7 +42,7 @@ def gen_song_hash(song_id, song_md5, media_version):
     """
     try:
         # Combine the song data
-        data = f"{song_id}{song_md5}{media_version}"
+        data = f"{song_md5}{media_version}{song_id}"
         
         # Generate hash using SHA1
         import hashlib
@@ -88,19 +88,70 @@ def decrypt_blowfish_track(crypted_audio, song_id, md5_origin, song_path):
         # Calculate the Blowfish key
         bf_key = __calcbfkey(song_id)
         
-        # Read and decrypt the data in chunks
+        # Approach 1: Collect all data first, then decrypt in proper blocks
+        try:
+            # Collect all encrypted data
+            all_data = b''
+            for chunk in crypted_audio:
+                if chunk:
+                    all_data += chunk
+            
+            # Ensure the total length is a multiple of 8 (Blowfish block size)
+            block_size = 8
+            if len(all_data) % block_size != 0:
+                padding_size = block_size - (len(all_data) % block_size)
+                all_data += b'\x00' * padding_size
+                logger.debug(f"Added {padding_size} bytes of padding to make data a multiple of 8 bytes")
+            
+            # Create Blowfish cipher
+            cipher = __newBlowfish(bf_key.encode(), __MODE_CBC, __idk)
+            
+            # Decrypt the data in properly sized chunks
+            with open(song_path, 'wb') as f:
+                for i in range(0, len(all_data), 2048):  # Use larger chunks for efficiency
+                    chunk = all_data[i:i+2048]
+                    # Ensure each chunk is a multiple of 8 bytes
+                    if len(chunk) % block_size != 0:
+                        padding_size = block_size - (len(chunk) % block_size)
+                        chunk += b'\x00' * padding_size
+                    decrypted_chunk = cipher.decrypt(chunk)
+                    f.write(decrypted_chunk)
+            
+            logger.debug(f"Successfully decrypted and saved Blowfish-encrypted file to {song_path}")
+            return
+            
+        except Exception as e:
+            # If first approach fails, try alternate method
+            logger.warning(f"First decryption approach failed: {e}. Trying alternate method...")
+            
+        # Approach 2: Process chunk by chunk with manual padding
         with open(song_path, 'wb') as f:
-            # Process audio data in chunks
-            chunk_size = 2048
-            for data in crypted_audio:
-                if not data:
+            buffer = b''
+            cipher = __newBlowfish(bf_key.encode(), __MODE_CBC, __idk)
+            
+            for chunk in crypted_audio:
+                if not chunk:
                     continue
-                    
-                # Decrypt each chunk using Blowfish
-                decrypted_chunk = __blowfishDecrypt(data, bf_key)
-                f.write(decrypted_chunk)
                 
-        logger.debug(f"Successfully decrypted and saved Blowfish-encrypted file to {song_path}")
+                buffer += chunk
+                
+                # Process complete blocks of 8 bytes
+                blocks_to_process = len(buffer) - (len(buffer) % 8)
+                if blocks_to_process > 0:
+                    data_to_decrypt = buffer[:blocks_to_process]
+                    buffer = buffer[blocks_to_process:]
+                    
+                    decrypted_data = cipher.decrypt(data_to_decrypt)
+                    f.write(decrypted_data)
+            
+            # Process any remaining data with padding
+            if buffer:
+                padding_size = 8 - (len(buffer) % 8)
+                buffer += b'\x00' * padding_size
+                decrypted_data = cipher.decrypt(buffer)
+                f.write(decrypted_data)
+                
+        logger.debug(f"Successfully decrypted and saved Blowfish-encrypted file using alternate method to {song_path}")
         
     except Exception as e:
         logger.error(f"Failed to decrypt Blowfish file: {str(e)}")
