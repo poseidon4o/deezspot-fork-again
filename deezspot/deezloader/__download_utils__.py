@@ -74,32 +74,79 @@ def __blowfishDecrypt(data, key):
 
 	return c.decrypt(data)
 
-def decryptfile(crypted_audio, ids, song_path):
+def decrypt_blowfish_track(crypted_audio, song_id, md5_origin, song_path):
     """
-    Decrypt the audio file using AES encryption.
+    Decrypt the audio file using Blowfish encryption.
     
     Args:
         crypted_audio: The encrypted audio data
-        ids: The track IDs containing encryption key
+        song_id: The song ID for generating the key
+        md5_origin: The MD5 hash of the track
         song_path: Path where to save the decrypted file
     """
     try:
-        # Get the encryption key from the track IDs
-        key = ids['key']
-        nonce = ids['nonce']
+        # Calculate the Blowfish key
+        bf_key = __calcbfkey(song_id)
         
-        # Create AES cipher in CTR mode
-        cipher = AES.new(key, AES.MODE_CTR, counter=Counter.new(128, initial_value=int.from_bytes(nonce, byteorder='big')))
-        
-        # Decrypt and write the file
+        # Read and decrypt the data in chunks
         with open(song_path, 'wb') as f:
-            for chunk in crypted_audio:
-                if chunk:
-                    decrypted_chunk = cipher.decrypt(chunk)
-                    f.write(decrypted_chunk)
+            # Process audio data in chunks
+            chunk_size = 2048
+            for data in crypted_audio:
+                if not data:
+                    continue
                     
-        logger.debug(f"Successfully decrypted and saved file to {song_path}")
+                # Decrypt each chunk using Blowfish
+                decrypted_chunk = __blowfishDecrypt(data, bf_key)
+                f.write(decrypted_chunk)
+                
+        logger.debug(f"Successfully decrypted and saved Blowfish-encrypted file to {song_path}")
         
+    except Exception as e:
+        logger.error(f"Failed to decrypt Blowfish file: {str(e)}")
+        raise
+
+def decryptfile(crypted_audio, ids, song_path):
+    """
+    Decrypt the audio file using either AES or Blowfish encryption.
+    
+    Args:
+        crypted_audio: The encrypted audio data
+        ids: The track IDs containing encryption info
+        song_path: Path where to save the decrypted file
+    """
+    try:
+        # Check encryption type
+        encryption_type = ids.get('encryption_type', 'aes')
+        
+        if encryption_type == 'aes':
+            # Get the AES encryption key and nonce
+            key = bytes.fromhex(ids['key'])
+            nonce = bytes.fromhex(ids['nonce'])
+            
+            # Create AES cipher in CTR mode
+            cipher = AES.new(key, AES.MODE_CTR, counter=Counter.new(128, initial_value=int.from_bytes(nonce, byteorder='big')))
+            
+            # Decrypt and write the file
+            with open(song_path, 'wb') as f:
+                for chunk in crypted_audio:
+                    if chunk:
+                        decrypted_chunk = cipher.decrypt(chunk)
+                        f.write(decrypted_chunk)
+                        
+            logger.debug(f"Successfully decrypted and saved AES-encrypted file to {song_path}")
+            
+        elif encryption_type == 'blowfish':
+            # Use Blowfish decryption
+            decrypt_blowfish_track(
+                crypted_audio, 
+                str(ids['track_id']), 
+                ids['md5_origin'], 
+                song_path
+            )
+        else:
+            raise ValueError(f"Unknown encryption type: {encryption_type}")
+            
     except Exception as e:
         logger.error(f"Failed to decrypt file: {str(e)}")
         raise

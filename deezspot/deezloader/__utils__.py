@@ -58,19 +58,34 @@ def check_track_ids(infos_dw):
             logger.error("Missing SNG_ID in API response")
             raise ValueError("Missing SNG_ID")
             
-        # Get encryption info
+        # Initialize result dictionary
+        result = {'track_id': track_id}
+        
+        # Check for AES encryption info (MEDIA_KEY and MEDIA_NONCE)
         key = infos_dw.get('MEDIA_KEY')
         nonce = infos_dw.get('MEDIA_NONCE')
         
-        if not key or not nonce:
-            logger.error("Missing encryption info in API response")
-            raise ValueError("Missing encryption info")
+        if key and nonce:
+            # AES encryption is available
+            result['encryption_type'] = 'aes'
+            result['key'] = key
+            result['nonce'] = nonce
+        else:
+            # Fallback to Blowfish encryption
+            md5_origin = infos_dw.get('MD5_ORIGIN')
+            track_token = infos_dw.get('TRACK_TOKEN')
+            media_version = infos_dw.get('MEDIA_VERSION', '1')
             
-        return {
-            'track_id': track_id,
-            'key': key,
-            'nonce': nonce
-        }
+            if not md5_origin or not track_token:
+                logger.error("Missing Blowfish encryption info (MD5_ORIGIN or TRACK_TOKEN) in API response")
+                raise ValueError("Missing encryption info")
+                
+            result['encryption_type'] = 'blowfish'
+            result['md5_origin'] = md5_origin
+            result['track_token'] = track_token
+            result['media_version'] = media_version
+            
+        return result
         
     except Exception as e:
         logger.error(f"Failed to check track IDs: {str(e)}")
@@ -78,13 +93,13 @@ def check_track_ids(infos_dw):
 
 def check_track_md5(infos_dw):
     """
-    Check and extract track MD5 from the Deezer API response.
+    Check and extract track MD5 and media version from the Deezer API response.
     
     Args:
         infos_dw: Deezer API response data
         
     Returns:
-        str: Track MD5 hash
+        tuple: (Track MD5 hash, Media version)
     """
     try:
         md5 = infos_dw.get('MD5_ORIGIN')
@@ -92,7 +107,9 @@ def check_track_md5(infos_dw):
             logger.error("Missing MD5_ORIGIN in API response")
             raise ValueError("Missing MD5_ORIGIN")
             
-        return md5
+        media_version = infos_dw.get('MEDIA_VERSION', '1')
+        
+        return md5, media_version
         
     except Exception as e:
         logger.error(f"Failed to check track MD5: {str(e)}")

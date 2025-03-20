@@ -1,10 +1,10 @@
-from deezspot.deezloader.dee_api import API
-from copy import deepcopy
-from os.path import isfile
-import re
-from pathlib import Path
-import requests
+#!/usr/bin/python3
 import os
+import json
+import re
+from os.path import isfile
+from copy import deepcopy
+from deezspot.deezloader.dee_api import API
 from deezspot.deezloader.deegw_api import API_GW
 from deezspot.deezloader.deezer_settings import qualities
 from deezspot.libutils.others_settings import answers
@@ -24,15 +24,14 @@ from deezspot.models import (
 )
 from deezspot.deezloader.__utils__ import (
     check_track_ids,
-    check_track_md5,
     check_track_token,
+    check_track_md5,
 )
 from deezspot.libutils.utils import (
     set_path,
     trasform_sync_lyric,
     create_zip,
 )
-import json
 from mutagen.flac import FLAC
 from mutagen.mp3 import MP3
 from mutagen.id3 import ID3
@@ -53,32 +52,43 @@ class Download_JOB:
                 }]
             }
         else:
-            c_md5, c_media_version = check_track_md5(c_track)
-            track_id = check_track_ids(c_track)  # Now track_id is the actual ID (e.g., '68015917')
-            n_quality = qualities[quality_download]['n_quality']
-            if not c_md5:
-                raise ValueError("MD5_ORIGIN is missing")
-            if not c_media_version:
-                raise ValueError("MEDIA_VERSION is missing")
-            if not track_id:
-                raise ValueError("Track ID is missing")
-        
-            c_song_hash = gen_song_hash(
-                c_md5, n_quality,
-                track_id, c_media_version
-            )
-            c_media_url = API_GW.get_song_url(c_md5[0], c_song_hash)
-            return {
-                "media": [
-                    {
-                        "sources": [
-                            {
-                                "url": c_media_url
-                            }
-                        ]
-                    }
-                ]
-            }
+            # Get track IDs and check which encryption method is available
+            track_info = check_track_ids(c_track)
+            encryption_type = track_info.get('encryption_type', 'blowfish')
+            
+            # If AES encryption is available (MEDIA_KEY and MEDIA_NONCE present)
+            if encryption_type == 'aes':
+                # Use track token to get media URL from API
+                track_token = check_track_token(c_track)
+                medias = API_GW.get_medias_url([track_token], quality_download)
+                return medias[0]
+            
+            # Use Blowfish encryption (legacy method)
+            else:
+                md5_origin = track_info.get('md5_origin')
+                media_version = track_info.get('media_version', '1')
+                track_id = track_info.get('track_id')
+                
+                if not md5_origin:
+                    raise ValueError("MD5_ORIGIN is missing")
+                if not track_id:
+                    raise ValueError("Track ID is missing")
+                
+                n_quality = qualities[quality_download]['n_quality']
+                c_song_hash = gen_song_hash(track_id, md5_origin, media_version)
+                c_media_url = API_GW.get_song_url(md5_origin[0], c_song_hash)
+                
+                return {
+                    "media": [
+                        {
+                            "sources": [
+                                {
+                                    "url": c_media_url
+                                }
+                            ]
+                        }
+                    ]
+                }
      
     @classmethod
     def check_sources(
@@ -435,21 +445,30 @@ class EASY_DW:
                                 continue
 
             c_crypted_audio = crypted_audio.iter_content(2048)
+            
+            # Get track IDs and encryption information
+            # The enhanced check_track_ids function will determine the encryption type
             self.__fallback_ids = check_track_ids(self.__infos_dw)
+            logger.debug(f"Using encryption type: {self.__fallback_ids.get('encryption_type', 'unknown')}")
 
             try:
                 self.__write_track()
+                
+                # decryptfile now supports both AES and Blowfish encryption methods
                 decryptfile(c_crypted_audio, self.__fallback_ids, self.__song_path)
+                
                 self.__add_more_tags()
                 write_tags(self.__c_track)
             except Exception as e:
                 if isfile(self.__song_path):
                     os.remove(self.__song_path)
+                logger.error(f"Failed to process track: {str(e)}")
                 raise TrackNotFound(f"Failed to process {self.__song_path}: {str(e)}")
 
             return self.__c_track
 
         except Exception as e:
+            logger.error(f"Download failed: {str(e)}")
             raise TrackNotFound(self.__link) from e
 
     def download_episode_try(self) -> Episode:
