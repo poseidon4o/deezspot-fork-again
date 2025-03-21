@@ -3,3 +3,43 @@
 2025-03-20 17:20:33,285 - deezspot - INFO - {"status": "skipped", "type": "track", "album": "Discovery", "song": "Harder, Better, Faster, Stronger", "artist": "Daft Punk", "reason": "Track already exists"}
 2025-03-20 17:24:49,785 - deezspot - INFO - {"status": "downloading", "type": "track", "album": "Por Mi M\u00e9xico (Remix)", "song": "Por Mi M\u00e9xico (Remix)", "artist": "Lefty Sm & Santa Fe Klan & Dharius & C-kan & MC Davo & Neto Pe\u00f1a"}
 2025-03-20 17:24:55,856 - deezspot - INFO - {"status": "done", "type": "track", "album": "Por Mi M\u00e9xico (Remix)", "song": "Por Mi M\u00e9xico (Remix)", "artist": "Lefty Sm & Santa Fe Klan & Dharius & C-kan & MC Davo & Neto Pe\u00f1a"}
+2025-03-20 17:55:50,931 - deezspot - ERROR - Spotify client not initialized. Check if credentials are set correctly.
+2025-03-20 17:55:50,931 - deezspot - ERROR - Failed to convert Spotify link: https://open.spotify.com/track/2la8X2R7ngb4sn9gYNPkZU
+2025-03-20 17:55:50,931 - deezspot - ERROR - Error in download_trackspo for https://open.spotify.com/track/2la8X2R7ngb4sn9gYNPkZU: Failed to convert Spotify link to Deezer: https://open.spotify.com/track/2la8X2R7ngb4sn9gYNPkZU
+2025-03-20 17:55:50,931 - deezspot - ERROR - Spotify client is not initialized. Make sure Spotify credentials are set.
+2025-03-20 17:59:51,765 - deezspot - ERROR - No data available for https://api.deezer.com/album/13672636: no data
+2025-03-20 17:59:51,765 - deezspot - ERROR - Unknown error for https://api.deezer.com/album/13672636: no data
+2025-03-20 17:59:51,765 - deezspot - ERROR - Error getting album 13672636: no data
+2025-03-20 17:59:53,235 - deezspot - INFO - {"status": "downloading", "type": "track", "album": "Bye Mam\u00e1", "song": "La Plaga", "artist": "Alejandra Guzm\u00e1n"}
+2025-03-20 17:59:53,465 - deezspot - ERROR - Download failed: HTTPSConnectionPool(host='e-cdns-proxy-e.dzcdn.net', port=443): Max retries exceeded with url: /mobile/1/a61a7714ce93f655b4948cb0038aad76f4c0cd1f (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x796632577750>: Failed to resolve 'e-cdns-proxy-e.dzcdn.net' ([Errno -2] Name or service not known)"))
+2025-03-20 18:00:09,492 - deezspot - ERROR - Failed to process track: 'LYRICS_TEXT'
+2025-03-20 18:00:09,492 - deezspot - ERROR - Download failed: Track Failed to process ./downloads/deezer/trackspo/Alejandra Guzmán/Bye Mamá/01 - La Plaga.mp3: 'LYRICS_TEXT' not found (are you premium?)
+2025-03-20 18:00:43,992 - deezspot - ERROR - No data available for https://api.deezer.com/album/13672636: no data
+2025-03-20 18:00:43,992 - deezspot - ERROR - Unknown error for https://api.deezer.com/album/13672636: no data
+2025-03-20 18:00:43,992 - deezspot - ERROR - Error getting album 13672636: no data
+2025-03-20 18:00:44,645 - deezspot - INFO - {"status": "downloading", "type": "track", "album": "Bye Mam\u00e1", "song": "La Plaga", "artist": "Alejandra Guzm\u00e1n"}
+2025-03-20 18:00:44,784 - deezspot - ERROR - Download failed: HTTPSConnectionPool(host='e-cdns-proxy-e.dzcdn.net', port=443): Max retries exceeded with url: /mobile/1/a61a7714ce93f655b4948cb0038aad76f4c0cd1f (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7bee19401a90>: Failed to resolve 'e-cdns-proxy-e.dzcdn.net' ([Errno -2] Name or service not known)"))
+2025-03-20 18:00:53,631 - deezspot - ERROR - Failed to process track: 'LYRICS_TEXT'
+2025-03-20 18:00:53,631 - deezspot - ERROR - Download failed: Track Failed to process ./downloads/deezer/trackspo/Alejandra Guzmán/Bye Mamá/01 - La Plaga.mp3: 'LYRICS_TEXT' not found (are you premium?)
+2025-03-20 18:00:58,733 - deezspot - ERROR - No data available for https://api.deezer.com/album/13672636: no data
+2025-03-20 18:00:58,734 - deezspot - ERROR - Unknown error for https://api.deezer.com/album/13672636: no data
+2025-03-20 18:00:58,734 - deezspot - ERROR - Error getting album 13672636: no data
+2025-03-20 18:01:00,844 - deezspot - INFO - {"status": "downloading", "type": "track", "album": "Bye Mam\u00e1", "song": "La Plaga", "artist": "Alejandra Guzm\u00e1n"}
+2025-03-20 18:01:00,978 - deezspot - ERROR - Download failed: HTTPSConnectionPool(host='e-cdns-proxy-e.dzcdn.net', port=443): Max retries exceeded with url: /mobile/1/a61a7714ce93f655b4948cb0038aad76f4c0cd1f (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x78688136da90>: Failed to resolve 'e-cdns-proxy-e.dzcdn.net' ([Errno -2] Name or service not known)"))
+2025-03-20 18:01:09,260 - deezspot - ERROR - Failed to process track: 'LYRICS_TEXT'
+2025-03-20 18:01:09,260 - deezspot - ERROR - Download failed: Track Failed to process ./downloads/deezer/trackspo/Alejandra Guzmán/Bye Mamá/01 - La Plaga.mp3: 'LYRICS_TEXT' not found (are you premium?)
+2025-03-20 18:08:28,382 - deezspot - INFO - {"status": "downloading", "type": "track", "album": "Por Mi M\u00e9xico (Remix)", "song": "Por Mi M\u00e9xico (Remix)", "artist": "Lefty Sm & Santa Fe Klan & Dharius & C-kan & MC Davo & Neto Pe\u00f1a"}
+2025-03-20 18:10:04,366 - deezspot - INFO - {"status": "done", "type": "track", "album": "Por Mi M\u00e9xico (Remix)", "song": "Por Mi M\u00e9xico (Remix)", "artist": "Lefty Sm & Santa Fe Klan & Dharius & C-kan & MC Davo & Neto Pe\u00f1a"}
+2025-03-20 18:11:13,692 - deezspot - INFO - {"status": "skipped", "type": "track", "album": "Por Mi M\u00e9xico (Remix)", "song": "Por Mi M\u00e9xico (Remix)", "artist": "Lefty Sm & Santa Fe Klan & Dharius & C-kan & MC Davo & Neto Pe\u00f1a", "reason": "Track already exists"}
+2025-03-20 18:11:33,068 - deezspot - INFO - {"status": "skipped", "type": "track", "album": "Por Mi M\u00e9xico (Remix)", "song": "Por Mi M\u00e9xico (Remix)", "artist": "Lefty Sm & Santa Fe Klan & Dharius & C-kan & MC Davo & Neto Pe\u00f1a", "reason": "Track already exists"}
+2025-03-20 18:11:44,280 - deezspot - INFO - {"status": "skipped", "type": "track", "album": "Por Mi M\u00e9xico (Remix)", "song": "Por Mi M\u00e9xico (Remix)", "artist": "Lefty Sm & Santa Fe Klan & Dharius & C-kan & MC Davo & Neto Pe\u00f1a", "reason": "Track already exists"}
+2025-03-20 18:12:01,110 - deezspot - INFO - {"status": "skipped", "type": "track", "album": "Por Mi M\u00e9xico (Remix)", "song": "Por Mi M\u00e9xico (Remix)", "artist": "Lefty Sm & Santa Fe Klan & Dharius & C-kan & MC Davo & Neto Pe\u00f1a", "reason": "Track already exists"}
+2025-03-20 18:12:51,036 - deezspot - INFO - {"status": "skipped", "type": "track", "album": "Por Mi M\u00e9xico (Remix)", "song": "Por Mi M\u00e9xico (Remix)", "artist": "Lefty Sm & Santa Fe Klan & Dharius & C-kan & MC Davo & Neto Pe\u00f1a", "reason": "Track already exists"}
+2025-03-20 18:18:50,907 - deezspot - INFO - {"status": "skipped", "type": "track", "album": "Por Mi M\u00e9xico (Remix)", "song": "Por Mi M\u00e9xico (Remix)", "artist": "Lefty Sm & Santa Fe Klan & Dharius & C-kan & MC Davo & Neto Pe\u00f1a", "reason": "Track already exists"}
+2025-03-20 18:20:12,470 - deezspot - INFO - {"status": "skipped", "type": "track", "album": "Por Mi M\u00e9xico (Remix)", "song": "Por Mi M\u00e9xico (Remix)", "artist": "Lefty Sm & Santa Fe Klan & Dharius & C-kan & MC Davo & Neto Pe\u00f1a", "reason": "Track already exists"}
+2025-03-20 18:20:30,361 - deezspot - INFO - {"status": "skipped", "type": "track", "album": "Por Mi M\u00e9xico (Remix)", "song": "Por Mi M\u00e9xico (Remix)", "artist": "Lefty Sm & Santa Fe Klan & Dharius & C-kan & MC Davo & Neto Pe\u00f1a", "reason": "Track already exists"}
+2025-03-20 18:21:46,844 - deezspot - INFO - {"status": "skipped", "type": "track", "album": "Por Mi M\u00e9xico (Remix)", "song": "Por Mi M\u00e9xico (Remix)", "artist": "Lefty Sm & Santa Fe Klan & Dharius & C-kan & MC Davo & Neto Pe\u00f1a", "reason": "Track already exists"}
+2025-03-20 18:21:47,984 - deezspot - INFO - {"status": "skipped", "type": "track", "album": "Por Mi M\u00e9xico (Remix)", "song": "Por Mi M\u00e9xico (Remix)", "artist": "Lefty Sm & Santa Fe Klan & Dharius & C-kan & MC Davo & Neto Pe\u00f1a", "reason": "Track already exists"}
+2025-03-20 18:38:59,218 - deezspot - INFO - Initialized Spotify API with provided credentials
+2025-03-20 18:39:00,910 - deezspot - INFO - Successfully initialized Spotify session
+2025-03-20 18:39:01,176 - deezspot - INFO - Starting download for track: Never Gonna Give You Up - Rick Astley
