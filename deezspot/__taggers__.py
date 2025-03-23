@@ -238,7 +238,11 @@ def __write_ogg(song, song_metadata):
                 # Handle string timestamps if necessary
                 elif isinstance(value, str) and ' ' in value:
                     value = value.split()[0]
-                    
+            
+            # Skip "Unknown" BPM values or other non-numeric BPM values
+            if vorbis_key == 'bpm' and (value == "Unknown" or not isinstance(value, (int, float)) and not str(value).isdigit()):
+                continue
+                
             audio[vorbis_key] = [str(value)]
 
     # Add lyrics if present
@@ -265,8 +269,8 @@ def __write_ogg(song, song_metadata):
         except Exception as e:
             print(f"Error adding cover art: {e}")
 
-    # Additional validation for numeric fields
-    numeric_fields = ['tracknumber', 'discnumber', 'bpm']
+    # Additional validation for numeric fields - exclude BPM since we already handled it
+    numeric_fields = ['tracknumber', 'discnumber']
     for field in numeric_fields:
         if field in audio:
             try:
