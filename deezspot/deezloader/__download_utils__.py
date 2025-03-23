@@ -131,43 +131,59 @@ def decrypt_blowfish_track(crypted_audio, song_id, md5_origin, song_path):
         # Calculate the Blowfish key
         bf_key = __calcbfkey(song_id)
         
-        # Create Blowfish cipher
-        cipher = __newBlowfish(bf_key.encode(), __MODE_CBC, __idk)
+        # For debugging - log the key being used
+        logger.debug(f"Using Blowfish key for decryption: {bf_key.encode().hex()}")
+        
+        # Prepare to process the file
+        block_size = 2048  # Size of each block to process
+        
+        # We need to reconstruct the data from potentially variable-sized chunks into
+        # fixed-size blocks for proper decryption
+        buffer = bytearray()
+        block_count = 0  # Count of completed blocks
         
         # Open the output file
-        with open(song_path, 'wb') as f:
-            # Important: Deezer only encrypts every third 2048-byte block
-            block_size = 2048
-            i = 0
-            
-            # Process the audio data in blocks
+        with open(song_path, 'wb') as output_file:
+            # Process each incoming chunk of data
             for chunk in crypted_audio:
                 if not chunk:
                     continue
-                    
-                # Collect chunks until we have at least block_size bytes or the end of the stream
-                all_data = chunk
                 
-                # Process complete blocks
-                while len(all_data) >= block_size:
-                    block = all_data[:block_size]
-                    all_data = all_data[block_size:]
+                # Add current chunk to our buffer
+                buffer.extend(chunk)
+                
+                # Process as many complete blocks as we can
+                while len(buffer) >= block_size:
+                    # Extract a block from buffer
+                    block = buffer[:block_size]
+                    buffer = buffer[block_size:]
                     
                     # Only decrypt every third block
-                    is_encrypted = (i % 3 == 0)
+                    is_encrypted = (block_count % 3 == 0)
                     
                     if is_encrypted:
                         # Ensure the block is a multiple of 8 bytes (Blowfish block size)
-                        if len(block) % 8 == 0:
-                            block = cipher.decrypt(block)
+                        if len(block) == block_size and len(block) % 8 == 0:
+                            try:
+                                # Create a fresh cipher with the initialization vector for each block
+                                # This is crucial - we need to reset the IV for each encrypted block
+                                cipher = __newBlowfish(bf_key.encode(), __MODE_CBC, __idk)
+                                
+                                # Decrypt the block
+                                block = cipher.decrypt(block)
+                                logger.debug(f"Decrypted block {block_count} (size: {len(block)})")
+                            except Exception as e:
+                                logger.error(f"Failed to decrypt block {block_count}: {str(e)}")
+                                # Continue with the encrypted block rather than failing completely
                     
-                    # Write the block to the file
-                    f.write(block)
-                    i += 1
-                
-                # Write any remaining data
-                if all_data:
-                    f.write(all_data)
+                    # Write the block (decrypted or not) to the output file
+                    output_file.write(block)
+                    block_count += 1
+            
+            # Write any remaining data in the buffer (this won't be decrypted as it's a partial block)
+            if buffer:
+                logger.debug(f"Writing final partial block of size {len(buffer)}")
+                output_file.write(buffer)
             
         logger.debug(f"Successfully decrypted and saved Blowfish-encrypted file to {song_path}")
         
