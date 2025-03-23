@@ -330,6 +330,7 @@ class EASY_DW:
                 self.__link, self.__ids
             )
             skipped_track.success = False
+            skipped_track.was_skipped = True
             return skipped_track
 
         # Initial download start status
@@ -600,7 +601,8 @@ class DW_TRACK:
 
         track = EASY_DW(infos_dw, self.__preferences).easy_dw()
 
-        if not track.success:
+        # Check if track failed but was NOT intentionally skipped
+        if not track.success and not getattr(track, 'was_skipped', False):
             song = f"{self.__song_metadata['music']} - {self.__song_metadata['artist']}"
             error_msg = f"Cannot download {song}, maybe it's not available in this format?"
 

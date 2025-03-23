@@ -254,6 +254,9 @@ class EASY_DW:
                 "artist": current_artist,
                 "reason": "Track already exists"
             })
+            # Mark track as intentionally skipped
+            self.__c_track.success = False
+            self.__c_track.was_skipped = True
             return self.__c_track
 
         retries = 0
@@ -468,6 +471,8 @@ class DW_TRACK:
 
     def dw(self) -> Track:
         track = EASY_DW(self.__preferences).easy_dw()
+        # No error handling needed here - if track.success is False but was_skipped is True,
+        # it's an intentional skip, not an error
         return track
 
     def dw2(self) -> Track:
