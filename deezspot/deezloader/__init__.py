@@ -19,6 +19,7 @@ from deezspot.deezloader.__download__ import (
     DW_ALBUM,
     DW_PLAYLIST,
     DW_EPISODE,
+    Download_JOB,
 )
 from deezspot.exceptions import (
     InvalidLink,
@@ -81,6 +82,9 @@ class DeeLogin:
         
         # Configure progress reporting
         self.progress_reporter = ProgressReporter(callback=progress_callback, silent=silent)
+        
+        # Set the progress reporter for Download_JOB
+        Download_JOB.set_progress_reporter(self.progress_reporter)
 
     def report_progress(self, progress_data):
         """Report progress using the configured reporter."""

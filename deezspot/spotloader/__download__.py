@@ -506,11 +506,26 @@ class DW_ALBUM:
         tracks = album.tracks
         album.md5_image = self.__ids
         album.tags = self.__song_metadata
+        
+        # Use album_artist for reporting if available, otherwise use artist
+        album_artist = self.__song_metadata.get('album_artist', self.__song_metadata.get("artist", ""))
+        
+        # Handle different types and deduplicate
+        if isinstance(album_artist, list):
+            # Remove duplicates while preserving order
+            seen = set()
+            album_artist = "; ".join([x for x in album_artist if not (x in seen or seen.add(x))])
+        elif isinstance(album_artist, str) and ";" in album_artist:
+            # If it's already a semicolon-separated string, deduplicate
+            artist_list = [a.strip() for a in album_artist.split(";")]
+            seen = set()
+            album_artist = "; ".join([x for x in artist_list if not (x in seen or seen.add(x))])
+            
         Download_JOB.report_progress({
             "status": "initializing",
             "type": "album",
             "album": self.__song_metadata.get("album", ""),
-            "artist": self.__song_metadata.get("artist", ""),
+            "artist": album_artist,
             "total_tracks": self.__song_metadata['nb_tracks']
         })
         c_song_metadata = {}
@@ -561,7 +576,7 @@ class DW_ALBUM:
             "status": "done",
             "type": "album",
             "album": album_name,
-            "artist": artist_name,
+            "artist": album_artist,
             "total_tracks": total_tracks
         })
         return album

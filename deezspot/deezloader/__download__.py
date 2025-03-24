@@ -37,9 +37,23 @@ from mutagen.mp3 import MP3
 from mutagen.id3 import ID3
 from mutagen.mp4 import MP4
 from mutagen import File
-from deezspot.libutils.logging_utils import logger
+from deezspot.libutils.logging_utils import logger, ProgressReporter
 
 class Download_JOB:
+    progress_reporter = None
+    
+    @classmethod
+    def set_progress_reporter(cls, reporter):
+        cls.progress_reporter = reporter
+        
+    @classmethod
+    def report_progress(cls, progress_data):
+        """Report progress if a reporter is configured."""
+        if cls.progress_reporter:
+            cls.progress_reporter.report(progress_data)
+        else:
+            # Fallback to logger if no reporter is configured
+            logger.info(json.dumps(progress_data))
 
     @classmethod
     def __get_url(cls, c_track: Track, quality_download: str) -> dict:
@@ -316,14 +330,14 @@ class EASY_DW:
         current_title = self.__song_metadata['music']
         current_album = self.__song_metadata['album']
         if self.__track_already_exists(current_title, current_album):
-            logger.info(json.dumps({
+            Download_JOB.report_progress({
                 "status": "skipped",
                 "type": self.__download_type,
                 "album": current_album,
                 "song": current_title,
                 "artist": self.__song_metadata['artist'],
                 "reason": "Track already exists"
-            }))
+            })
             skipped_track = Track(
                 self.__song_metadata,
                 None, None, None,
@@ -334,13 +348,13 @@ class EASY_DW:
             return skipped_track
 
         # Initial download start status
-        logger.info(json.dumps({
+        Download_JOB.report_progress({
             "status": "downloading",
             "type": self.__download_type,
             "album": self.__song_metadata['album'],
             "song": self.__song_metadata['music'],
             "artist": self.__song_metadata['artist']
-        }))
+        })
 
         try:
             if self.__infos_dw.get('__TYPE__') == 'episode':
@@ -351,13 +365,13 @@ class EASY_DW:
                     raise e
             else:
                 self.download_try()
-                logger.info(json.dumps({
+                Download_JOB.report_progress({
                     "status": "done",
                     "type": "track",
                     "album": self.__song_metadata['album'],
                     "song": self.__song_metadata['music'],
                     "artist": self.__song_metadata['artist']
-                }))
+                })
         except TrackNotFound:
             try:
                 self.__fallback_ids = API.not_found(song, self.__song_metadata['music'])
@@ -512,8 +526,15 @@ class EASY_DW:
                     if chunk:
                         size = f.write(chunk)
                         downloaded += size
-                        # Removed episode progress updates
+                        # Download progress reporting could be added here
 
+            Download_JOB.report_progress({
+                "status": "done",
+                "type": "episode",
+                "name": self.__song_metadata.get('music', 'Unknown Episode'),
+                "show": self.__song_metadata.get('artist', 'Unknown Show')
+            })
+            
             self.__c_track.success = True
             self.__write_episode()
             write_tags(self.__c_track)
@@ -647,12 +668,27 @@ class DW_ALBUM:
         medias = Download_JOB.check_sources(
             infos_dw, self.__quality_download
         )
-        logger.info(json.dumps({
+        
+        # Use album_artist for reporting if available, otherwise use artist
+        album_artist = self.__song_metadata.get('album_artist', self.__song_metadata['artist'])
+        
+        # Handle different types and deduplicate
+        if isinstance(album_artist, list):
+            # Remove duplicates while preserving order
+            seen = set()
+            album_artist = "; ".join([x for x in album_artist if not (x in seen or seen.add(x))])
+        elif isinstance(album_artist, str) and ";" in album_artist:
+            # If it's already a semicolon-separated string, deduplicate
+            artist_list = [a.strip() for a in album_artist.split(";")]
+            seen = set()
+            album_artist = "; ".join([x for x in artist_list if not (x in seen or seen.add(x))])
+            
+        Download_JOB.report_progress({
             "status": "initializing",
             "type": "album",
             "album": self.__song_metadata['album'],
-            "artist": self.__song_metadata['artist']
-        }))
+            "artist": album_artist
+        })
 
         total_tracks = len(infos_dw)
         for a in range(total_tracks):
@@ -705,13 +741,13 @@ class DW_ALBUM:
 
             # Print progress status for each track
             current_track_str = f"{track_number}/{total_tracks}"
-            logger.info(json.dumps({
+            Download_JOB.report_progress({
                 "status": "progress",
                 "type": "album",
                 "track": c_song_metadata['music'],
                 "current_track": current_track_str,
                 "album": c_song_metadata['album']
-            }))
+            })
             
             # Merge album-level metadata (only add fields not already set in c_song_metadata)
             for key, item in self.__song_metadata_items:
@@ -758,12 +794,13 @@ class DW_ALBUM:
             )
             album.zip_path = zip_name
 
-        logger.info(json.dumps({
+        # Use the same album_artist variable defined earlier
+        Download_JOB.report_progress({
             "status": "done",
             "type": "album",
             "album": self.__song_metadata['album'],
-            "artist": self.__song_metadata['artist']
-        }))
+            "artist": album_artist
+        })
 
         return album
 
@@ -789,12 +826,12 @@ class DW_PLAYLIST:
         playlist_name = self.__json_data['title']
         total_tracks = len(infos_dw)
 
-        logger.info(json.dumps({
+        Download_JOB.report_progress({
             "status": "initializing",
             "type": "playlist",
             "name": playlist_name,
             "total_tracks": total_tracks
-        }))
+        })
 
         playlist = Playlist()
         tracks = playlist.tracks
@@ -830,12 +867,12 @@ class DW_PLAYLIST:
             track = EASY_DW(c_infos_dw, c_preferences).easy_dw()
 
             current_track_str = f"{idx}/{total_tracks}"
-            logger.info(json.dumps({
+            Download_JOB.report_progress({
                 "status": "progress",
                 "type": "playlist",
                 "track": c_song_metadata['music'],
                 "current_track": current_track_str
-            }))
+            })
 
             if not track.success:
                 song = f"{c_song_metadata['music']} - {c_song_metadata['artist']}"
@@ -860,12 +897,12 @@ class DW_PLAYLIST:
             create_zip(tracks, zip_name=zip_name)
             playlist.zip_path = zip_name
 
-        logger.info(json.dumps({
+        Download_JOB.report_progress({
             "status": "done",
             "type": "playlist",
             "name": playlist_name,
             "total_tracks": total_tracks
-        }))
+        })
         
         return playlist
 
