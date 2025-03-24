@@ -55,6 +55,7 @@ def var_excape(string):
         "$": "s",
         "'": "",
         "`": "",
+        ";": ",",  # Replace semicolons with commas to avoid conflicts with our separator
     }
     
     for old, new in replacements.items():

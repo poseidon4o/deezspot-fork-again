@@ -17,14 +17,14 @@ def tracking(ids, album=None):
             datas['image'] = json_album['images'][0]['url']
             datas['image2'] = json_album['images'][1]['url']
             datas['image3'] = json_album['images'][2]['url']
-            datas['genre'] = " & ".join(json_album['genres'])
+            datas['genre'] = ";".join(json_album['genres'])
 
             ar_album = [
                 artist['name']
                 for artist in json_album['artists']
             ]
 
-            datas['ar_album'] = " & ".join(ar_album)
+            datas['ar_album'] = ";".join(ar_album)
             datas['album'] = json_album['name']
             datas['label'] = json_album['label']
 
@@ -44,7 +44,7 @@ def tracking(ids, album=None):
             for artist in json_track['artists']
         ]
 
-        datas['artist'] = " & ".join(artists)
+        datas['artist'] = ";".join(artists)
         datas['tracknum'] = json_track['track_number']
         datas['discnum'] = json_track['disc_number']
 
@@ -92,7 +92,7 @@ def tracking_album(album_json):
             "label": album_json['label'],
             "year": convert_to_date(album_json['release_date']),
             "nb_tracks": album_json['total_tracks'],
-            "genre": " & ".join(album_json['genres'])
+            "genre": ";".join(album_json['genres'])
         }
 
         ar_album = [
@@ -100,7 +100,7 @@ def tracking_album(album_json):
             for artist in album_json['artists']
         ]
 
-        song_metadata['ar_album'] = " & ".join(ar_album)
+        song_metadata['ar_album'] = ";".join(ar_album)
 
         external_ids = album_json['external_ids']
 
@@ -147,7 +147,7 @@ def tracking_episode(ids):
         datas['is_externally_hosted'] = json_episode.get('is_externally_hosted', False)
         datas['is_playable'] = json_episode.get('is_playable', False)
         datas['language'] = json_episode.get('language', '')
-        datas['languages'] = " & ".join(json_episode.get('languages', []))
+        datas['languages'] = ";".join(json_episode.get('languages', []))
         datas['name'] = json_episode.get('name', '')
         datas['release_date'] = convert_to_date(json_episode.get('release_date', ''))
         datas['show'] = json_episode.get('show', {}).get('name', '')

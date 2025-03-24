@@ -15,7 +15,7 @@ def artist_sort(array: list):
 		dict.fromkeys(array)
 	)
 
-	artists = " & ".join(array)
+	artists = ";".join(array)
 
 	return artists
 
