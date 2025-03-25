@@ -276,40 +276,63 @@ class EASY_DW:
                 )
                 total_size = stream.input_stream.size
                 os.makedirs(dirname(self.__song_path), exist_ok=True)
-                with open(self.__song_path, "wb") as f:
-                    c_stream = stream.input_stream.stream()
-                    if self.__real_time_dl and self.__song_metadata.get("duration"):
-                        duration = self.__song_metadata["duration"]
-                        if duration > 0:
-                            rate_limit = total_size / duration
-                            chunk_size = 4096
-                            bytes_written = 0
-                            start_time = time.time()
-                            while True:
-                                chunk = c_stream.read(chunk_size)
-                                if not chunk:
-                                    break
-                                f.write(chunk)
-                                bytes_written += len(chunk)
-                                Download_JOB.report_progress({
-                                    "status": "real_time",
-                                    "song": self.__song_metadata.get("music", ""),
-                                    "artist": self.__song_metadata.get("artist", ""),
-                                    "time_elapsed": int((time.time() - start_time)*1000),
-                                    "percentage": bytes_written / total_size
-                                })
-                                expected_time = bytes_written / rate_limit
-                                if expected_time > (time.time() - start_time):
-                                    time.sleep(expected_time - (time.time() - start_time))
+                
+                # Real-time download section
+                try:
+                    with open(self.__song_path, "wb") as f:
+                        c_stream = stream.input_stream.stream()
+                        if self.__real_time_dl and self.__song_metadata.get("duration"):
+                            duration = self.__song_metadata["duration"]
+                            if duration > 0:
+                                rate_limit = total_size / duration
+                                chunk_size = 4096
+                                bytes_written = 0
+                                start_time = time.time()
+                                try:
+                                    while True:
+                                        chunk = c_stream.read(chunk_size)
+                                        if not chunk:
+                                            break
+                                        f.write(chunk)
+                                        bytes_written += len(chunk)
+                                        Download_JOB.report_progress({
+                                            "status": "real_time",
+                                            "song": self.__song_metadata.get("music", ""),
+                                            "artist": self.__song_metadata.get("artist", ""),
+                                            "time_elapsed": int((time.time() - start_time)*1000),
+                                            "percentage": bytes_written / total_size
+                                        })
+                                        expected_time = bytes_written / rate_limit
+                                        if expected_time > (time.time() - start_time):
+                                            time.sleep(expected_time - (time.time() - start_time))
+                                except Exception as e:
+                                    # If any error occurs during real-time download, delete the incomplete file
+                                    logger.error(f"Error during real-time download: {str(e)}")
+                                    c_stream.close()
+                                    f.close()
+                                    if os.path.exists(self.__song_path):
+                                        os.remove(self.__song_path)
+                                    raise
+                            else:
+                                data = c_stream.read(total_size)
+                                f.write(data)
                         else:
                             data = c_stream.read(total_size)
                             f.write(data)
-                    else:
-                        data = c_stream.read(total_size)
-                        f.write(data)
-                    c_stream.close()
+                        c_stream.close()
+                except Exception as e:
+                    # Ensure the file is closed and removed if there's an error
+                    logger.error(f"Error during download: {str(e)}")
+                    if os.path.exists(self.__song_path):
+                        os.remove(self.__song_path)
+                    raise
+                
                 break
             except Exception as e:
+                # Clean up any incomplete file
+                if os.path.exists(self.__song_path):
+                    os.remove(self.__song_path)
+                    
                 global GLOBAL_RETRY_COUNT
                 GLOBAL_RETRY_COUNT += 1
                 retries += 1
@@ -323,9 +346,13 @@ class EASY_DW:
                     "error": str(e)
                 })
                 if retries >= max_retries or GLOBAL_RETRY_COUNT >= GLOBAL_MAX_RETRIES:
+                    # Final cleanup before giving up
+                    if os.path.exists(self.__song_path):
+                        os.remove(self.__song_path)
                     raise Exception(f"Maximum retry limit reached (local: {max_retries}, global: {GLOBAL_MAX_RETRIES}).")
                 time.sleep(retry_delay)
                 retry_delay += retry_delay_increase  # Use the custom retry delay increase
+                
         try:
             self.__convert_audio()
         except Exception as e:
@@ -338,9 +365,19 @@ class EASY_DW:
                 "album": self.__song_metadata['album'],
                 "error": str(e)
             }))
+            # If conversion fails, make sure to clean up the .ogg file
+            if os.path.exists(self.__song_path):
+                os.remove(self.__song_path)
+                
             time.sleep(retry_delay)
             retry_delay += retry_delay_increase  # Use the custom retry delay increase
-            self.__convert_audio()
+            try:
+                self.__convert_audio()
+            except Exception as conv_e:
+                # If conversion fails twice, clean up and raise
+                if os.path.exists(self.__song_path):
+                    os.remove(self.__song_path)
+                raise conv_e
 
         self.__write_track()
         write_tags(self.__c_track)
@@ -390,41 +427,63 @@ class EASY_DW:
                     "error": str(e)
                 }))
                 if retries >= max_retries or GLOBAL_RETRY_COUNT >= GLOBAL_MAX_RETRIES:
+                    # Clean up any partial files before giving up
+                    if os.path.exists(self.__song_path):
+                        os.remove(self.__song_path)
                     raise Exception(f"Maximum retry limit reached (local: {max_retries}, global: {GLOBAL_MAX_RETRIES}).")
                 time.sleep(retry_delay)
                 retry_delay += retry_delay_increase  # Use the custom retry delay increase
         total_size = stream.input_stream.size
         os.makedirs(dirname(self.__song_path), exist_ok=True)
-        with open(self.__song_path, "wb") as f:
-            c_stream = stream.input_stream.stream()
-            if self.__real_time_dl and self.__song_metadata.get("duration"):
-                duration = self.__song_metadata["duration"]
-                if duration > 0:
-                    rate_limit = total_size / duration
-                    chunk_size = 4096
-                    bytes_written = 0
-                    start_time = time.time()
-                    while True:
-                        chunk = c_stream.read(chunk_size)
-                        if not chunk:
-                            break
-                        f.write(chunk)
-                        bytes_written += len(chunk)
-                        expected_time = bytes_written / rate_limit
-                        elapsed_time = time.time() - start_time
-                        if expected_time > elapsed_time:
-                            time.sleep(expected_time - elapsed_time)
+        
+        try:
+            with open(self.__song_path, "wb") as f:
+                c_stream = stream.input_stream.stream()
+                if self.__real_time_dl and self.__song_metadata.get("duration"):
+                    duration = self.__song_metadata["duration"]
+                    if duration > 0:
+                        rate_limit = total_size / duration
+                        chunk_size = 4096
+                        bytes_written = 0
+                        start_time = time.time()
+                        try:
+                            while True:
+                                chunk = c_stream.read(chunk_size)
+                                if not chunk:
+                                    break
+                                f.write(chunk)
+                                bytes_written += len(chunk)
+                                # Could add progress reporting here
+                                expected_time = bytes_written / rate_limit
+                                elapsed_time = time.time() - start_time
+                                if expected_time > elapsed_time:
+                                    time.sleep(expected_time - elapsed_time)
+                        except Exception as e:
+                            # If any error occurs during real-time download, delete the incomplete file
+                            logger.error(f"Error during real-time download: {str(e)}")
+                            c_stream.close()
+                            f.close()
+                            if os.path.exists(self.__song_path):
+                                os.remove(self.__song_path)
+                            raise
+                    else:
+                        data = c_stream.read(total_size)
+                        f.write(data)
                 else:
                     data = c_stream.read(total_size)
                     f.write(data)
-            else:
-                data = c_stream.read(total_size)
-                f.write(data)
-            c_stream.close()
+                c_stream.close()
+        except Exception as e:
+            # Clean up the file on any error
+            if os.path.exists(self.__song_path):
+                os.remove(self.__song_path)
+            logger.error(f"Failed to download episode: {str(e)}")
+            raise
+            
         try:
             self.__convert_audio()
         except Exception as e:
-            print(json.dumps({
+            logger.error(json.dumps({
                 "status": "retrying",
                 "action": "convert_audio",
                 "song": self.__song_metadata['music'],
@@ -432,9 +491,20 @@ class EASY_DW:
                 "album": self.__song_metadata['album'],
                 "error": str(e)
             }))
+            # Clean up if conversion fails
+            if os.path.exists(self.__song_path):
+                os.remove(self.__song_path)
+                
             time.sleep(retry_delay)
             retry_delay += retry_delay_increase  # Use the custom retry delay increase
-            self.__convert_audio()
+            try:
+                self.__convert_audio()
+            except Exception as conv_e:
+                # If conversion fails twice, clean up and raise
+                if os.path.exists(self.__song_path):
+                    os.remove(self.__song_path)
+                raise conv_e
+                
         self.__write_episode()
         write_tags(self.__c_episode)
         return self.__c_episode
