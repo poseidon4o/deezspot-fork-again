@@ -2,6 +2,9 @@ import traceback
 import json
 import os 
 import time
+import signal
+import atexit
+import sys
 from copy import deepcopy
 from os.path import isfile, dirname
 from librespot.core import Session
@@ -38,6 +41,59 @@ from deezspot.libutils.logging_utils import logger
 # --- Global retry counter variables ---
 GLOBAL_RETRY_COUNT = 0
 GLOBAL_MAX_RETRIES = 100  # Adjust this value as needed
+
+# --- Global tracking of active downloads ---
+ACTIVE_DOWNLOADS = set()
+CLEANUP_LOCK = False
+
+def register_active_download(file_path):
+    """Register a file as being actively downloaded"""
+    ACTIVE_DOWNLOADS.add(file_path)
+    
+def unregister_active_download(file_path):
+    """Remove a file from the active downloads list"""
+    if file_path in ACTIVE_DOWNLOADS:
+        ACTIVE_DOWNLOADS.remove(file_path)
+
+def cleanup_active_downloads():
+    """Clean up any incomplete downloads during process termination"""
+    global CLEANUP_LOCK
+    if CLEANUP_LOCK:
+        return
+        
+    CLEANUP_LOCK = True
+    logger.info(f"Cleaning up {len(ACTIVE_DOWNLOADS)} incomplete downloads...")
+    for file_path in list(ACTIVE_DOWNLOADS):
+        try:
+            if os.path.exists(file_path):
+                logger.info(f"Removing incomplete download: {file_path}")
+                os.remove(file_path)
+                unregister_active_download(file_path)
+        except Exception as e:
+            logger.error(f"Error cleaning up file {file_path}: {str(e)}")
+    logger.info("Cleanup complete")
+    CLEANUP_LOCK = False
+
+# Register the cleanup function to run on exit
+atexit.register(cleanup_active_downloads)
+
+# Set up signal handlers
+def signal_handler(sig, frame):
+    logger.info(f"Received termination signal {sig}. Cleaning up...")
+    cleanup_active_downloads()
+    if sig == signal.SIGINT:
+        logger.info("CTRL+C received. Exiting...")
+    sys.exit(0)
+
+# Register signal handlers for common termination signals
+signal.signal(signal.SIGINT, signal_handler)   # CTRL+C
+signal.signal(signal.SIGTERM, signal_handler)  # Normal termination
+try:
+    # These may not be available on all platforms
+    signal.signal(signal.SIGHUP, signal_handler)   # Terminal closed
+    signal.signal(signal.SIGQUIT, signal_handler)  # CTRL+\
+except AttributeError:
+    pass
 
 class Download_JOB:
     session = None
@@ -148,9 +204,34 @@ class EASY_DW:
     def __convert_audio(self) -> None:
         temp_filename = self.__song_path.replace(".ogg", ".tmp")
         os_replace(self.__song_path, temp_filename)
-        ffmpeg_cmd = f"ffmpeg -y -hide_banner -loglevel error -i \"{temp_filename}\" -c:a copy \"{self.__song_path}\""
-        system(ffmpeg_cmd)
-        remove(temp_filename)
+        
+        # Register the temporary file
+        register_active_download(temp_filename)
+        
+        try:
+            ffmpeg_cmd = f"ffmpeg -y -hide_banner -loglevel error -i \"{temp_filename}\" -c:a copy \"{self.__song_path}\""
+            system(ffmpeg_cmd)
+            
+            # Register the new output file and unregister the temp file
+            register_active_download(self.__song_path)
+            
+            # Remove the temporary file
+            if os.path.exists(temp_filename):
+                remove(temp_filename)
+                unregister_active_download(temp_filename)
+                
+        except Exception as e:
+            # In case of failure, try to restore the original file
+            if os.path.exists(temp_filename) and not os.path.exists(self.__song_path):
+                os_replace(temp_filename, self.__song_path)
+            
+            # Clean up temp files
+            if os.path.exists(temp_filename):
+                remove(temp_filename)
+                unregister_active_download(temp_filename)
+                
+            # Re-throw the exception
+            raise e
 
     def get_no_dw_track(self) -> Track:
         return self.__c_track
@@ -274,13 +355,16 @@ class EASY_DW:
                     False,
                     None
                 )
+                c_stream = stream.input_stream.stream()
                 total_size = stream.input_stream.size
                 os.makedirs(dirname(self.__song_path), exist_ok=True)
+                
+                # Register this file as being actively downloaded
+                register_active_download(self.__song_path)
                 
                 # Real-time download section
                 try:
                     with open(self.__song_path, "wb") as f:
-                        c_stream = stream.input_stream.stream()
                         if self.__real_time_dl and self.__song_metadata.get("duration"):
                             duration = self.__song_metadata["duration"]
                             if duration > 0:
@@ -308,17 +392,43 @@ class EASY_DW:
                                 except Exception as e:
                                     # If any error occurs during real-time download, delete the incomplete file
                                     logger.error(f"Error during real-time download: {str(e)}")
-                                    c_stream.close()
-                                    f.close()
+                                    try:
+                                        c_stream.close()
+                                    except:
+                                        pass
+                                    try:
+                                        f.close()
+                                    except:
+                                        pass
                                     if os.path.exists(self.__song_path):
                                         os.remove(self.__song_path)
                                     raise
                             else:
+                                try:
+                                    data = c_stream.read(total_size)
+                                    f.write(data)
+                                except Exception as e:
+                                    logger.error(f"Error during download: {str(e)}")
+                                    try:
+                                        c_stream.close()
+                                    except:
+                                        pass
+                                    if os.path.exists(self.__song_path):
+                                        os.remove(self.__song_path)
+                                    raise
+                        else:
+                            try:
                                 data = c_stream.read(total_size)
                                 f.write(data)
-                        else:
-                            data = c_stream.read(total_size)
-                            f.write(data)
+                            except Exception as e:
+                                logger.error(f"Error during download: {str(e)}")
+                                try:
+                                    c_stream.close()
+                                except:
+                                    pass
+                                if os.path.exists(self.__song_path):
+                                    os.remove(self.__song_path)
+                                raise
                         c_stream.close()
                 except Exception as e:
                     # Ensure the file is closed and removed if there's an error
@@ -327,11 +437,14 @@ class EASY_DW:
                         os.remove(self.__song_path)
                     raise
                 
+                # After successful download, unregister the file
+                unregister_active_download(self.__song_path)
                 break
             except Exception as e:
                 # Clean up any incomplete file
                 if os.path.exists(self.__song_path):
                     os.remove(self.__song_path)
+                unregister_active_download(self.__song_path)
                     
                 global GLOBAL_RETRY_COUNT
                 GLOBAL_RETRY_COUNT += 1
@@ -436,6 +549,9 @@ class EASY_DW:
         total_size = stream.input_stream.size
         os.makedirs(dirname(self.__song_path), exist_ok=True)
         
+        # Register this file as being actively downloaded
+        register_active_download(self.__song_path)
+        
         try:
             with open(self.__song_path, "wb") as f:
                 c_stream = stream.input_stream.stream()
@@ -461,22 +577,49 @@ class EASY_DW:
                         except Exception as e:
                             # If any error occurs during real-time download, delete the incomplete file
                             logger.error(f"Error during real-time download: {str(e)}")
-                            c_stream.close()
-                            f.close()
+                            try:
+                                c_stream.close()
+                            except:
+                                pass
+                            try:
+                                f.close()
+                            except:
+                                pass
                             if os.path.exists(self.__song_path):
                                 os.remove(self.__song_path)
                             raise
                     else:
+                        try:
+                            data = c_stream.read(total_size)
+                            f.write(data)
+                        except Exception as e:
+                            logger.error(f"Error during episode download: {str(e)}")
+                            try:
+                                c_stream.close()
+                            except:
+                                pass
+                            if os.path.exists(self.__song_path):
+                                os.remove(self.__song_path)
+                            raise
+                else:
+                    try:
                         data = c_stream.read(total_size)
                         f.write(data)
-                else:
-                    data = c_stream.read(total_size)
-                    f.write(data)
+                    except Exception as e:
+                        logger.error(f"Error during episode download: {str(e)}")
+                        try:
+                            c_stream.close()
+                        except:
+                            pass
+                        if os.path.exists(self.__song_path):
+                            os.remove(self.__song_path)
+                        raise
                 c_stream.close()
         except Exception as e:
             # Clean up the file on any error
             if os.path.exists(self.__song_path):
                 os.remove(self.__song_path)
+            unregister_active_download(self.__song_path)
             logger.error(f"Failed to download episode: {str(e)}")
             raise
             
