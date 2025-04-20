@@ -239,14 +239,14 @@ class API:
 				for genre in album_json['genres']['data']:
 					genres.append(genre['name'])
 
-			song_metadata['genre'] = ";".join(genres)
+			song_metadata['genre'] = "; ".join(genres)
 			ar_album = []
 
 			for contributor in album_json['contributors']:
 				if contributor['role'] == "Main":
 					ar_album.append(contributor['name'])
 
-			song_metadata['ar_album'] = ";".join(ar_album)
+			song_metadata['ar_album'] = "; ".join(ar_album)
 			song_metadata['album'] = album_json['title']
 			song_metadata['label'] = album_json['label']
 			song_metadata['upc'] = album_json['upc']
@@ -301,14 +301,14 @@ class API:
 			for a in album_json['genres']['data']:
 				genres.append(a['name'])
 
-		song_metadata['genre'] = ";".join(genres)
+		song_metadata['genre'] = "; ".join(genres)
 		ar_album = []
 
 		for a in album_json['contributors']:
 			if a['role'] == "Main":
 				ar_album.append(a['name'])
 
-		song_metadata['ar_album'] = ";".join(ar_album)
+		song_metadata['ar_album'] = "; ".join(ar_album)
 		sm_items = song_metadata.items()
 
 		for track in album_json['tracks']['data']:

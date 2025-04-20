@@ -551,28 +551,28 @@ class EASY_DW:
         contributors = self.__infos_dw.get('SNG_CONTRIBUTORS', {})
 
         if "author" in contributors:
-            self.__song_metadata['author'] = ";".join(
+            self.__song_metadata['author'] = "; ".join(
                 contributors['author']
             )
         else:
             self.__song_metadata['author'] = ""
 
         if "composer" in contributors:
-            self.__song_metadata['composer'] = ";".join(
+            self.__song_metadata['composer'] = "; ".join(
                 contributors['composer']
             )
         else:
             self.__song_metadata['composer'] = ""
 
         if "lyricist" in contributors:
-            self.__song_metadata['lyricist'] = ";".join(
+            self.__song_metadata['lyricist'] = "; ".join(
                 contributors['lyricist']
             )
         else:
             self.__song_metadata['lyricist'] = ""
 
         if "composerlyricist" in contributors:
-            self.__song_metadata['composer'] = ";".join(
+            self.__song_metadata['composer'] = "; ".join(
                 contributors['composerlyricist']
             )
         else:
@@ -708,14 +708,14 @@ class DW_ALBUM:
 
             # If we have contributor data, build the artist and composer strings.
             if has_contributors:
-                main_artist = ";".join(contributors.get('main_artist', []))
-                featuring = ";".join(contributors.get('featuring', []))
+                main_artist = "; ".join(contributors.get('main_artist', []))
+                featuring = "; ".join(contributors.get('featuring', []))
                 
                 artist_parts = [main_artist]
                 if featuring:
                     artist_parts.append(f"(feat. {featuring})")
                 artist_str = " ".join(artist_parts)
-                composer_str = ";".join(contributors.get('composer', []))
+                composer_str = "; ".join(contributors.get('composer', []))
             
             # Build the core track metadata.
             # When there is no contributor info, we intentionally leave out the 'artist'
