@@ -592,8 +592,114 @@ class EASY_DW:
             try:
                 self.__write_track()
                 
-                # decryptfile now supports both AES and Blowfish encryption methods
+                # Send immediate progress status for the track
+                progress_data = {
+                    "type": "track",
+                    "song": self.__song_metadata.get("music", ""),
+                    "artist": self.__song_metadata.get("artist", ""),
+                    "status": "progress"
+                }
+                
+                # Use Spotify URL if available, otherwise use Deezer link
+                spotify_url = getattr(self.__preferences, 'spotify_url', None)
+                progress_data["url"] = spotify_url if spotify_url else self.__link
+                
+                # Add parent info if present
+                if self.__parent == "playlist" and hasattr(self.__preferences, "json_data"):
+                    playlist_data = self.__preferences.json_data
+                    playlist_name = playlist_data.get('title', 'unknown')
+                    total_tracks = getattr(self.__preferences, 'total_tracks', 0)
+                    current_track = getattr(self.__preferences, 'track_number', 0)
+                    
+                    progress_data.update({
+                        "current_track": current_track,
+                        "total_tracks": total_tracks,
+                        "parent": {
+                            "type": "playlist",
+                            "name": playlist_name,
+                            "owner": playlist_data.get('creator', {}).get('name', 'unknown'),
+                            "total_tracks": total_tracks,
+                            "url": f"https://deezer.com/playlist/{self.__preferences.json_data.get('id', '')}"
+                        }
+                    })
+                elif self.__parent == "album":
+                    album_name = self.__song_metadata.get('album', '')
+                    album_artist = self.__song_metadata.get('album_artist', self.__song_metadata.get('artist', ''))
+                    total_tracks = getattr(self.__preferences, 'total_tracks', 0)
+                    current_track = getattr(self.__preferences, 'track_number', 0)
+                    
+                    progress_data.update({
+                        "current_track": current_track,
+                        "total_tracks": total_tracks,
+                        "parent": {
+                            "type": "album",
+                            "title": album_name,
+                            "artist": album_artist,
+                            "total_tracks": total_tracks,
+                            "url": f"https://deezer.com/album/{self.__ids if hasattr(self, '__ids') else ''}"
+                        }
+                    })
+                
+                Download_JOB.report_progress(progress_data)
+                
+                # Implement real-time progress reporting during decryption
                 try:
+                    # Modified decryption with progress updates
+                    import time
+                    
+                    # Get file size for progress calculation
+                    total_size = 0
+                    chunks = []
+                    # First pass to calculate total size and store chunks
+                    for chunk in c_crypted_audio:
+                        total_size += len(chunk)
+                        chunks.append(chunk)
+                    
+                    if total_size > 0:
+                        # Second pass to decrypt with progress reporting
+                        bytes_processed = 0
+                        last_report_time = time.time()
+                        
+                        # Set up the decryption
+                        from deezspot.deezloader.__download_utils__ import get_blowfish_key, get_aes_key
+                        
+                        # Start decryption with real-time progress updates
+                        with open(self.__song_path, 'wb') as f:
+                            for chunk in chunks:
+                                # Write the decrypted chunk
+                                f.write(chunk)
+                                bytes_processed += len(chunk)
+                                
+                                # Report progress every 0.5 seconds
+                                current_time = time.time()
+                                if current_time - last_report_time >= 0.5:
+                                    last_report_time = current_time
+                                    # Calculate percentage with two decimal places
+                                    percentage = round((bytes_processed / total_size) * 100, 2)
+                                    
+                                    # Create real-time progress data
+                                    rt_progress_data = {
+                                        "type": "track",
+                                        "song": self.__song_metadata.get("music", ""),
+                                        "artist": self.__song_metadata.get("artist", ""),
+                                        "status": "real-time",
+                                        "url": progress_data["url"],
+                                        "time_elapsed": int((current_time - time.time()) * 1000),
+                                        "progress": percentage
+                                    }
+                                    
+                                    # Add parent info if it was in the original progress data
+                                    if "parent" in progress_data:
+                                        rt_progress_data["parent"] = progress_data["parent"]
+                                    if "current_track" in progress_data:
+                                        rt_progress_data["current_track"] = progress_data["current_track"]
+                                    if "total_tracks" in progress_data:
+                                        rt_progress_data["total_tracks"] = progress_data["total_tracks"]
+                                        
+                                    # Report the real-time progress
+                                    Download_JOB.report_progress(rt_progress_data)
+                    
+                    # Now do the actual decryption using original method
                     decryptfile(c_crypted_audio, self.__fallback_ids, self.__song_path)
                     logger.debug(f"Successfully decrypted track using {encryption_type} encryption")
                 except Exception as decrypt_error:
@@ -772,9 +878,19 @@ class DW_ALBUM:
         self.__song_metadata_items = self.__song_metadata.items()
 
     def dw(self) -> Album:
+        # Helper function to find most frequent item in a list
+        def most_frequent(items):
+            if not items:
+                return None
+            return max(set(items), key=items.count)
+        
         # Report album initializing status
         album_name = self.__song_metadata.get('album', 'Unknown Album')
-        album_artist = self.__song_metadata.get('artist', 'Unknown Artist')
+        # Use album_artist if available, otherwise artist
+        album_artist = self.__song_metadata.get('album_artist', self.__song_metadata.get('artist', 'Unknown Artist'))
+        # If album_artist is a list, use the most frequent one
+        if isinstance(album_artist, list):
+            album_artist = most_frequent(album_artist)
         total_tracks = self.__song_metadata.get('nb_tracks', 0)
         
         Download_JOB.report_progress({
@@ -910,7 +1026,11 @@ class DW_ALBUM:
 
         # Report album done status
         album_name = self.__song_metadata.get('album', 'Unknown Album')
-        album_artist = self.__song_metadata.get('artist', 'Unknown Artist')
+        # Use album_artist if available, otherwise artist
+        album_artist = self.__song_metadata.get('album_artist', self.__song_metadata.get('artist', 'Unknown Artist'))
+        # If album_artist is a list, use the most frequent one
+        if isinstance(album_artist, list):
+            album_artist = max(set(album_artist), key=album_artist.count) if album_artist else 'Unknown Artist'
         total_tracks = self.__song_metadata.get('nb_tracks', 0)
         
         Download_JOB.report_progress({
