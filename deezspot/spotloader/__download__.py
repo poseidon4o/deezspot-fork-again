@@ -424,6 +424,53 @@ class EASY_DW:
         retry_delay_increase = getattr(self.__preferences, 'retry_delay_increase', 30)  # Default to 30 seconds
         max_retries = getattr(self.__preferences, 'max_retries', 5)  # Default to 5 retries
 
+        # Send immediate progress status for the track at the beginning of download
+        progress_data = {
+            "type": "track",
+            "song": self.__song_metadata.get("music", ""),
+            "artist": self.__song_metadata.get("artist", ""),
+            "status": "progress",
+            "url": self.__link
+        }
+        
+        # Add parent info based on parent type
+        if self.__parent == "playlist" and hasattr(self.__preferences, "json_data"):
+            playlist_data = self.__preferences.json_data
+            playlist_name = playlist_data.get('name', 'unknown')
+            total_tracks = playlist_data.get('tracks', {}).get('total', 'unknown')
+            current_track = getattr(self.__preferences, 'track_number', 0)
+            
+            progress_data.update({
+                "current_track": current_track,
+                "total_tracks": total_tracks,
+                "parent": {
+                    "type": "playlist",
+                    "name": playlist_name,
+                    "owner": playlist_data.get('owner', {}).get('display_name', 'unknown'),
+                    "total_tracks": total_tracks,
+                    "url": f"https://open.spotify.com/playlist/{playlist_data.get('id', '')}"
+                }
+            })
+        elif self.__parent == "album":
+            album_name = self.__song_metadata.get('album', '')
+            album_artist = self.__song_metadata.get('album_artist', self.__song_metadata.get('ar_album', ''))
+            total_tracks = self.__song_metadata.get('nb_tracks', 0)
+            current_track = getattr(self.__preferences, 'track_number', 0)
+            
+            progress_data.update({
+                "current_track": current_track,
+                "total_tracks": total_tracks,
+                "parent": {
+                    "type": "album",
+                    "title": album_name,
+                    "artist": album_artist,
+                    "total_tracks": total_tracks,
+                    "url": f"https://open.spotify.com/album/{self.__song_metadata.get('album_id', '')}"
+                }
+            })
+        
+        Download_JOB.report_progress(progress_data)
+        
         while True:
             try:
                 track_id_obj = TrackId.from_base62(self.__ids)
@@ -466,6 +513,28 @@ class EASY_DW:
                                             # Calculate percentage with two decimal places
                                             percentage = round((bytes_written / total_size) * 100, 2)
                                             
+                                            # Store parent information for real-time updates
+                                            rt_parent_type = None
+                                            rt_current_track = None
+                                            rt_total_tracks = None
+                                            
+                                            # Add parent info based on parent type for real-time updates
+                                            if self.__parent == "playlist" and hasattr(self.__preferences, "json_data"):
+                                                rt_parent_type = "playlist"
+                                                playlist_data = self.__preferences.json_data
+                                                rt_playlist_name = playlist_data.get('name', 'unknown')
+                                                rt_total_tracks = playlist_data.get('tracks', {}).get('total', 'unknown')
+                                                rt_current_track = getattr(self.__preferences, 'track_number', 0)
+                                                rt_playlist_owner = playlist_data.get('owner', {}).get('display_name', 'unknown')
+                                                rt_playlist_id = playlist_data.get('id', '')
+                                            elif self.__parent == "album":
+                                                rt_parent_type = "album"
+                                                rt_album_name = self.__song_metadata.get('album', '')
+                                                rt_album_artist = self.__song_metadata.get('album_artist', self.__song_metadata.get('ar_album', ''))
+                                                rt_total_tracks = self.__song_metadata.get('nb_tracks', 0)
+                                                rt_current_track = getattr(self.__preferences, 'track_number', 0)
+                                                rt_album_id = self.__song_metadata.get('album_id', '')
+                                            
                                             # Create real-time progress data with the new format
                                             progress_data = {
                                                 "type": "track",
@@ -477,42 +546,34 @@ class EASY_DW:
                                                 "progress": percentage
                                             }
                                             
+                                            # Add track number and total tracks if available
+                                            if rt_current_track is not None:
+                                                progress_data["current_track"] = rt_current_track
+                                            if rt_total_tracks is not None:
+                                                progress_data["total_tracks"] = rt_total_tracks
+                                                
                                             # Add parent info based on parent type
-                                            if self.__parent == "playlist" and hasattr(self.__preferences, "json_data"):
-                                                playlist_data = self.__preferences.json_data
-                                                playlist_name = playlist_data.get('name', 'unknown')
-                                                total_tracks = playlist_data.get('tracks', {}).get('total', 'unknown')
-                                                current_track = getattr(self.__preferences, 'track_number', 0)
-                                            
-                                            progress_data.update({
-                                                "current_track": current_track,
-                                                "total_tracks": total_tracks,
-                                                "parent": {
+                                            if rt_parent_type == "playlist":
+                                                progress_data["parent"] = {
                                                     "type": "playlist",
-                                                    "name": playlist_name,
-                                                    "owner": playlist_data.get('owner', {}).get('display_name', 'unknown')
+                                                    "name": rt_playlist_name,
+                                                    "owner": rt_playlist_owner,
+                                                    "total_tracks": rt_total_tracks,
+                                                    "url": f"https://open.spotify.com/playlist/{rt_playlist_id}"
                                                 }
-                                            })
-                                        elif self.__parent == "album":
-                                            album_name = self.__song_metadata.get('album', '')
-                                            album_artist = self.__song_metadata.get('album_artist', self.__song_metadata.get('ar_album', ''))
-                                            total_tracks = self.__song_metadata.get('nb_tracks', 0)
-                                            current_track = getattr(self.__preferences, 'track_number', 0)
-                                            
-                                            progress_data.update({
-                                                "current_track": current_track,
-                                                "total_tracks": total_tracks,
-                                                "parent": {
+                                            elif rt_parent_type == "album":
+                                                progress_data["parent"] = {
                                                     "type": "album",
-                                                    "title": album_name,
-                                                    "artist": album_artist
+                                                    "title": rt_album_name,
+                                                    "artist": rt_album_artist,
+                                                    "total_tracks": rt_total_tracks,
+                                                    "url": f"https://open.spotify.com/album/{rt_album_id}"
                                                 }
-                                            })
                                             
-                                        Download_JOB.report_progress(progress_data)
-                                        expected_time = bytes_written / rate_limit
-                                        if expected_time > (time.time() - start_time):
-                                            time.sleep(expected_time - (time.time() - start_time))
+                                            Download_JOB.report_progress(progress_data)
+                                            expected_time = bytes_written / rate_limit
+                                            if expected_time > (time.time() - start_time):
+                                                time.sleep(expected_time - (time.time() - start_time))
                                 except Exception as e:
                                     # If any error occurs during real-time download, delete the incomplete file
                                     logger.error(f"Error during real-time download: {str(e)}")
@@ -623,17 +684,50 @@ class EASY_DW:
 
         self.__write_track()
         write_tags(self.__c_track)
+        # Create done status report using the same format as progress status
         progress_data = {
-            "status": "done",
-            "type": "track", 
-            "album": self.__song_metadata.get("album", ""),
+            "type": "track",
             "song": self.__song_metadata.get("music", ""),
-            "artist": self.__song_metadata.get("artist", "")
+            "artist": self.__song_metadata.get("artist", ""),
+            "status": "done",
+            "url": self.__link
         }
         
-        # Add parent info if track is part of album or playlist
-        if self.__parent:
-            progress_data["parent"] = self.__parent
+        # Add parent info based on parent type
+        if self.__parent == "playlist" and hasattr(self.__preferences, "json_data"):
+            playlist_data = self.__preferences.json_data
+            playlist_name = playlist_data.get('name', 'unknown')
+            total_tracks = playlist_data.get('tracks', {}).get('total', 'unknown')
+            current_track = getattr(self.__preferences, 'track_number', 0)
+            
+            progress_data.update({
+                "current_track": current_track,
+                "total_tracks": total_tracks,
+                "parent": {
+                    "type": "playlist",
+                    "name": playlist_name,
+                    "owner": playlist_data.get('owner', {}).get('display_name', 'unknown'),
+                    "total_tracks": total_tracks,
+                    "url": f"https://open.spotify.com/playlist/{playlist_data.get('id', '')}"
+                }
+            })
+        elif self.__parent == "album":
+            album_name = self.__song_metadata.get('album', '')
+            album_artist = self.__song_metadata.get('album_artist', self.__song_metadata.get('ar_album', ''))
+            total_tracks = self.__song_metadata.get('nb_tracks', 0)
+            current_track = getattr(self.__preferences, 'track_number', 0)
+            
+            progress_data.update({
+                "current_track": current_track,
+                "total_tracks": total_tracks,
+                "parent": {
+                    "type": "album",
+                    "title": album_name,
+                    "artist": album_artist,
+                    "total_tracks": total_tracks,
+                    "url": f"https://open.spotify.com/album/{self.__song_metadata.get('album_id', '')}"
+                }
+            })
             
         Download_JOB.report_progress(progress_data)
         return self.__c_track
@@ -843,9 +937,30 @@ class DW_ALBUM:
         self.__song_metadata_items = self.__song_metadata.items()
 
     def dw(self) -> Album:
+        # Helper function to find most frequent item in a list
+        def most_frequent(items):
+            if not items:
+                return None
+            # If items is a string with semicolons, split it
+            if isinstance(items, str) and ";" in items:
+                items = [item.strip() for item in items.split(";")]
+            # If it's still a string, return it directly
+            if isinstance(items, str):
+                return items
+            # Otherwise, find the most frequent item
+            return max(set(items), key=items.count)
+        
         # Report album initializing status
         album_name = self.__song_metadata.get('album', 'Unknown Album')
+        
+        # Process album artist to get the most representative one
         album_artist = self.__song_metadata.get('artist', 'Unknown Artist')
+        if isinstance(album_artist, list):
+            album_artist = most_frequent(album_artist)
+        elif isinstance(album_artist, str) and ";" in album_artist:
+            artists_list = [artist.strip() for artist in album_artist.split(";")]
+            album_artist = most_frequent(artists_list) if artists_list else album_artist
+        
         total_tracks = self.__song_metadata.get('nb_tracks', 0)
         album_id = self.__ids
         
@@ -889,6 +1004,10 @@ class DW_ALBUM:
             c_preferences.ids = c_song_metadata['ids']
             c_preferences.track_number = current_track  # Track number in the album
             c_preferences.link = f"https://open.spotify.com/track/{c_preferences.ids}"
+            
+            # Add album_id to song metadata for consistent parent info
+            c_preferences.song_metadata['album_id'] = self.__ids
+            
             try:
                 # Use track-level reporting through EASY_DW
                 track = EASY_DW(c_preferences, parent='album').download_try()
@@ -912,7 +1031,15 @@ class DW_ALBUM:
             
         # Report album done status
         album_name = self.__song_metadata.get('album', 'Unknown Album')
+        
+        # Process album artist for the done status (use the same logic as initializing)
         album_artist = self.__song_metadata.get('artist', 'Unknown Artist')
+        if isinstance(album_artist, list):
+            album_artist = most_frequent(album_artist)
+        elif isinstance(album_artist, str) and ";" in album_artist:
+            artists_list = [artist.strip() for artist in album_artist.split(";")]
+            album_artist = most_frequent(artists_list) if artists_list else album_artist
+        
         total_tracks = self.__song_metadata.get('nb_tracks', 0)
         album_id = self.__ids
         

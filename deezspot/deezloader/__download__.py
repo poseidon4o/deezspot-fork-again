@@ -684,7 +684,7 @@ class EASY_DW:
                                         "artist": self.__song_metadata.get("artist", ""),
                                         "status": "real-time",
                                         "url": progress_data["url"],
-                                        "time_elapsed": int((current_time - time.time()) * 1000),
+                                        "time_elapsed": int((current_time - start_time) * 1000),
                                         "progress": percentage
                                     }
                                     
@@ -991,6 +991,10 @@ class DW_ALBUM:
             c_preferences.song_metadata = c_song_metadata.copy()
             c_preferences.ids = c_infos_dw['SNG_ID']
             c_preferences.track_number = track_number
+            
+            # Add additional information for consistent parent info
+            c_preferences.song_metadata['album_id'] = self.__ids
+            c_preferences.song_metadata['total_tracks'] = total_tracks
             c_preferences.total_tracks = total_tracks
             c_preferences.link = f"https://deezer.com/track/{c_preferences.ids}"
             
@@ -1201,12 +1205,53 @@ class DW_EPISODE:
             total_size = int(content_length) if content_length else None
 
             downloaded = 0
+            total_size = int(response.headers.get('content-length', 0))
+            
+            # Send initial progress status
+            progress_data = {
+                "type": "episode",
+                "song": self.__preferences.song_metadata.get('name', ''),
+                "artist": self.__preferences.song_metadata.get('publisher', ''),
+                "status": "progress",
+                "url": f"https://www.deezer.com/episode/{self.__ids}",
+                "parent": {
+                    "type": "show",
+                    "title": self.__preferences.song_metadata.get('show', ''),
+                    "artist": self.__preferences.song_metadata.get('publisher', '')
+                }
+            }
+            Download_JOB.report_progress(progress_data)
+            
             with open(output_path, 'wb') as f:
+                start_time = time.time()
+                last_report_time = 0
+                
                 for chunk in response.iter_content(chunk_size=8192):
                     if chunk:
                         size = f.write(chunk)
                         downloaded += size
-                        # Removed progress reporting here
+                        
+                        # Real-time progress reporting every 0.5 seconds
+                        current_time = time.time()
+                        if self.__real_time_dl and total_size > 0 and current_time - last_report_time >= 0.5:
+                            last_report_time = current_time
+                            percentage = round((downloaded / total_size) * 100, 2)
+                            
+                            progress_data = {
+                                "type": "episode",
+                                "song": self.__preferences.song_metadata.get('name', ''),
+                                "artist": self.__preferences.song_metadata.get('publisher', ''),
+                                "status": "real-time",
+                                "url": f"https://www.deezer.com/episode/{self.__ids}",
+                                "time_elapsed": int((current_time - start_time) * 1000),
+                                "progress": percentage,
+                                "parent": {
+                                    "type": "show",
+                                    "title": self.__preferences.song_metadata.get('show', ''),
+                                    "artist": self.__preferences.song_metadata.get('publisher', '')
+                                }
+                            }
+                            Download_JOB.report_progress(progress_data)
             
             episode = Track(
                 self.__preferences.song_metadata,
@@ -1217,6 +1262,22 @@ class DW_EPISODE:
                 self.__ids
             )
             episode.success = True
+            
+            # Send completion status
+            progress_data = {
+                "type": "episode",
+                "song": self.__preferences.song_metadata.get('name', ''),
+                "artist": self.__preferences.song_metadata.get('publisher', ''),
+                "status": "done",
+                "url": f"https://www.deezer.com/episode/{self.__ids}",
+                "parent": {
+                    "type": "show",
+                    "title": self.__preferences.song_metadata.get('show', ''),
+                    "artist": self.__preferences.song_metadata.get('publisher', '')
+                }
+            }
+            Download_JOB.report_progress(progress_data)
+            
             return episode
             
         except Exception as e:
