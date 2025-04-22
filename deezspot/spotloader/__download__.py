@@ -244,18 +244,48 @@ class EASY_DW:
         image = request(pic).content
         self.__song_metadata['image'] = image
 
-        # Log initial "downloading" status for track
+        # Log initial "downloading" status using standardized format for both deezloader and spotloader
         progress_data = {
-            "status": "downloading",
             "type": "track",
-            "album": self.__song_metadata.get("album", ""),
             "song": self.__song_metadata.get("music", ""),
-            "artist": self.__song_metadata.get("artist", "")
+            "artist": self.__song_metadata.get("artist", ""),
+            "status": "progress",
+            "url": self.__link  # Already using Spotify URL in spotloader
         }
         
-        # Add parent info if track is part of album or playlist
-        if self.__parent:
-            progress_data["parent"] = self.__parent
+        # Add parent info based on parent type
+        if self.__parent == "playlist" and hasattr(self.__preferences, "json_data"):
+            playlist_data = self.__preferences.json_data
+            playlist_name = playlist_data.get('name', 'unknown')
+            total_tracks = playlist_data.get('tracks', {}).get('total', 'unknown')
+            current_track = getattr(self.__preferences, 'track_number', 0)
+            
+            # Format for playlist-parented tracks exactly as required across both loaders
+            progress_data.update({
+                "current_track": current_track,
+                "total_tracks": total_tracks,
+                "parent": {
+                    "type": "playlist",
+                    "name": playlist_name,
+                    "owner": playlist_data.get('owner', {}).get('display_name', 'unknown')
+                }
+            })
+        elif self.__parent == "album":
+            album_name = self.__song_metadata.get('album', '')
+            album_artist = self.__song_metadata.get('album_artist', self.__song_metadata.get('ar_album', ''))
+            total_tracks = self.__song_metadata.get('nb_tracks', 0)
+            current_track = getattr(self.__preferences, 'track_number', 0)
+            
+            # Format for album-parented tracks exactly as required across both loaders
+            progress_data.update({
+                "current_track": current_track,
+                "total_tracks": total_tracks,
+                "parent": {
+                    "type": "album",
+                    "title": album_name,
+                    "artist": album_artist
+                }
+            })
             
         Download_JOB.report_progress(progress_data)
 
@@ -335,18 +365,47 @@ class EASY_DW:
         current_artist = self.__song_metadata.get('artist')
 
         if self.track_exists(current_title, current_album):
+            # Create skipped progress report using new format
             progress_data = {
-                "status": "skipped",
-                "type": "track", 
-                "album": current_album,
+                "type": "track",
                 "song": current_title,
                 "artist": current_artist,
+                "status": "skipped",
+                "url": self.__link,
                 "reason": "Track already exists"
             }
             
-            # Add parent info if track is part of album or playlist
-            if self.__parent:
-                progress_data["parent"] = self.__parent
+            # Add parent info based on parent type
+            if self.__parent == "playlist" and hasattr(self.__preferences, "json_data"):
+                playlist_data = self.__preferences.json_data
+                playlist_name = playlist_data.get('name', 'unknown')
+                total_tracks = playlist_data.get('tracks', {}).get('total', 'unknown')
+                current_track = getattr(self.__preferences, 'track_number', 0)
+                
+                progress_data.update({
+                    "current_track": current_track,
+                    "total_tracks": total_tracks,
+                    "parent": {
+                        "type": "playlist",
+                        "name": playlist_name,
+                        "owner": playlist_data.get('owner', {}).get('display_name', 'unknown')
+                    }
+                })
+            elif self.__parent == "album":
+                album_name = self.__song_metadata.get('album', '')
+                album_artist = self.__song_metadata.get('album_artist', self.__song_metadata.get('ar_album', ''))
+                total_tracks = self.__song_metadata.get('nb_tracks', 0)
+                current_track = getattr(self.__preferences, 'track_number', 0)
+                
+                progress_data.update({
+                    "current_track": current_track,
+                    "total_tracks": total_tracks,
+                    "parent": {
+                        "type": "album",
+                        "title": album_name,
+                        "artist": album_artist
+                    }
+                })
                 
             Download_JOB.report_progress(progress_data)
             
@@ -394,17 +453,48 @@ class EASY_DW:
                                             break
                                         f.write(chunk)
                                         bytes_written += len(chunk)
+                                        # Create real-time progress data with the new format
                                         progress_data = {
-                                            "status": "real_time",
+                                            "type": "track",
                                             "song": self.__song_metadata.get("music", ""),
                                             "artist": self.__song_metadata.get("artist", ""),
+                                            "status": "real_time",
+                                            "url": self.__link,
                                             "time_elapsed": int((time.time() - start_time)*1000),
                                             "percentage": bytes_written / total_size
                                         }
                                         
-                                        # Add parent info if track is part of album or playlist
-                                        if self.__parent:
-                                            progress_data["parent"] = self.__parent
+                                        # Add parent info based on parent type
+                                        if self.__parent == "playlist" and hasattr(self.__preferences, "json_data"):
+                                            playlist_data = self.__preferences.json_data
+                                            playlist_name = playlist_data.get('name', 'unknown')
+                                            total_tracks = playlist_data.get('tracks', {}).get('total', 'unknown')
+                                            current_track = getattr(self.__preferences, 'track_number', 0)
+                                            
+                                            progress_data.update({
+                                                "current_track": current_track,
+                                                "total_tracks": total_tracks,
+                                                "parent": {
+                                                    "type": "playlist",
+                                                    "name": playlist_name,
+                                                    "owner": playlist_data.get('owner', {}).get('display_name', 'unknown')
+                                                }
+                                            })
+                                        elif self.__parent == "album":
+                                            album_name = self.__song_metadata.get('album', '')
+                                            album_artist = self.__song_metadata.get('album_artist', self.__song_metadata.get('ar_album', ''))
+                                            total_tracks = self.__song_metadata.get('nb_tracks', 0)
+                                            current_track = getattr(self.__preferences, 'track_number', 0)
+                                            
+                                            progress_data.update({
+                                                "current_track": current_track,
+                                                "total_tracks": total_tracks,
+                                                "parent": {
+                                                    "type": "album",
+                                                    "title": album_name,
+                                                    "artist": album_artist
+                                                }
+                                            })
                                             
                                         Download_JOB.report_progress(progress_data)
                                         expected_time = bytes_written / rate_limit
@@ -752,27 +842,6 @@ class DW_ALBUM:
         album.md5_image = self.__ids
         album.tags = self.__song_metadata
         
-        # Use album_artist for reporting if available, otherwise use artist
-        album_artist = self.__song_metadata.get('album_artist', self.__song_metadata.get("artist", ""))
-        
-        # Handle different types and deduplicate
-        if isinstance(album_artist, list):
-            # Remove duplicates while preserving order
-            seen = set()
-            album_artist = "; ".join([x for x in album_artist if not (x in seen or seen.add(x))])
-        elif isinstance(album_artist, str) and ";" in album_artist:
-            # If it's already a semicolon-separated string, deduplicate
-            artist_list = [a.strip() for a in album_artist.split(";")]
-            seen = set()
-            album_artist = "; ".join([x for x in artist_list if not (x in seen or seen.add(x))])
-            
-        Download_JOB.report_progress({
-            "status": "initializing",
-            "type": "album",
-            "album": self.__song_metadata.get("album", ""),
-            "artist": album_artist,
-            "total_tracks": self.__song_metadata['nb_tracks']
-        })
         c_song_metadata = {}
         for key, item in self.__song_metadata_items:
             if type(item) is not list:
@@ -786,19 +855,14 @@ class DW_ALBUM:
             artist_name = c_song_metadata['artist']
             album_name = c_song_metadata['album']
             current_track = a + 1
-            Download_JOB.report_progress({
-                "status": "progress",
-                "type": "album",
-                "track": song_name,
-                "current_track": f"{current_track}/{total_tracks}",
-                "album": c_song_metadata['album'],
-                "artist": c_song_metadata['artist']
-            })
+            
             c_preferences = deepcopy(self.__preferences)
             c_preferences.song_metadata = c_song_metadata.copy()
             c_preferences.ids = c_song_metadata['ids']
+            c_preferences.track_number = current_track  # Track number in the album
             c_preferences.link = f"https://open.spotify.com/track/{c_preferences.ids}"
             try:
+                # Use track-level reporting through EASY_DW
                 track = EASY_DW(c_preferences, parent='album').download_try()
             except TrackNotFound:
                 track = Track(c_song_metadata, None, None, None, None, None)
@@ -817,13 +881,6 @@ class DW_ALBUM:
                 custom_dir_format=custom_dir_format
             )
             album.zip_path = zip_name
-        Download_JOB.report_progress({
-            "status": "done",
-            "type": "album",
-            "album": album_name,
-            "artist": album_artist,
-            "total_tracks": total_tracks
-        })
         return album
 
     def dw2(self) -> Album:
@@ -831,6 +888,7 @@ class DW_ALBUM:
         download_cli(self.__preferences)
         return track
 
+# ... (rest of the code remains the same)
 class DW_PLAYLIST:
     def __init__(
         self,
@@ -846,13 +904,7 @@ class DW_PLAYLIST:
     def dw(self) -> Playlist:
         playlist_name = self.__json_data.get('name', 'unknown')
         total_tracks = self.__json_data.get('tracks', {}).get('total', 'unknown')
-        Download_JOB.report_progress({
-            "status": "initializing",
-            "type": "playlist",
-            "name": playlist_name,
-            "total_tracks": total_tracks
-        })
-
+        
         # --- Prepare the m3u playlist file ---
         playlist_m3u_dir = os.path.join(self.__output_dir, "playlists")
         os.makedirs(playlist_m3u_dir, exist_ok=True)
@@ -871,15 +923,11 @@ class DW_PLAYLIST:
             c_preferences = deepcopy(self.__preferences)
             c_preferences.ids = c_song_metadata['ids']
             c_preferences.song_metadata = c_song_metadata
+            c_preferences.json_data = self.__json_data  # Pass playlist data for reporting
+            c_preferences.track_number = idx + 1  # Track number in the playlist
+            
+            # Use track-level reporting through EASY_DW
             track = EASY_DW(c_preferences, parent='playlist').easy_dw()
-
-            current_track_str = f"{idx}/{total_tracks}"
-            Download_JOB.report_progress({
-                "status": "progress",
-                "type": "playlist",
-                "track": c_song_metadata['music'],
-                "current_track": current_track_str
-            })
 
             if not track.success:
                 song = f"{c_song_metadata['music']} - {c_song_metadata['artist']}"
@@ -896,13 +944,6 @@ class DW_PLAYLIST:
                 with open(m3u_path, "a", encoding="utf-8") as m3u_file:
                     m3u_file.write(f"{relative_path}\n")
             # ---------------------------------------------------------------------
-
-        Download_JOB.report_progress({
-            "status": "done",
-            "type": "playlist",
-            "name": playlist_name,
-            "total_tracks": total_tracks
-        })
         
         if self.__make_zip:
             playlist_title = self.__json_data['name']
@@ -914,12 +955,7 @@ class DW_PLAYLIST:
     def dw2(self) -> Playlist:
         playlist_name = self.__json_data.get('name', 'unknown')
         total_tracks = self.__json_data.get('tracks', {}).get('total', 'unknown')
-        Download_JOB.report_progress({
-            "status": "initializing",
-            "type": "playlist",
-            "name": playlist_name,
-            "total_tracks": total_tracks
-        })
+        
         playlist = Playlist()
         tracks = playlist.tracks
         for i, c_song_metadata in enumerate(self.__song_metadata):
@@ -929,24 +965,34 @@ class DW_PLAYLIST:
             c_preferences = deepcopy(self.__preferences)
             c_preferences.ids = c_song_metadata['ids']
             c_preferences.song_metadata = c_song_metadata
+            c_preferences.json_data = self.__json_data  # Pass playlist data for reporting
+            c_preferences.track_number = i + 1  # Track number in the playlist
+
+            # Even though we're not downloading directly, we still need to set up the track object
             track = EASY_DW(c_preferences, parent='playlist').get_no_dw_track()
             if not track.success:
                 song = f"{c_song_metadata['music']} - {c_song_metadata['artist']}"
                 logger.warning(f"Cannot download {song}")
             tracks.append(track)
-            Download_JOB.report_progress({
+            
+            # Track-level progress reporting using the standardized format
+            progress_data = {
+                "type": "track",
+                "song": c_song_metadata.get("music", ""),
+                "artist": c_song_metadata.get("artist", ""),
                 "status": "progress",
-                "type": "playlist",
-                "track": c_song_metadata.get("music", ""),
-                "current_track": f"{i+1}/{total_tracks}"
-            })
+                "current_track": i + 1,
+                "total_tracks": total_tracks,
+                "parent": {
+                    "type": "playlist",
+                    "name": playlist_name,
+                    "owner": self.__json_data.get('owner', {}).get('display_name', 'unknown')
+                },
+                "url": f"https://open.spotify.com/track/{c_song_metadata['ids']}"
+            }
+            Download_JOB.report_progress(progress_data)
         download_cli(self.__preferences)
-        Download_JOB.report_progress({
-            "status": "done",
-            "type": "playlist",
-            "name": playlist_name,
-            "total_tracks": total_tracks
-        })
+        
         if self.__make_zip:
             playlist_title = self.__json_data['name']
             zip_name = f"{self.__output_dir}/{playlist_title} [playlist {self.__ids}]"
@@ -962,40 +1008,72 @@ class DW_EPISODE:
         self.__preferences = preferences
 
     def dw(self) -> Episode:
-        Download_JOB.report_progress({
-            "status": "initializing",
+        # Using standardized episode progress format
+        progress_data = {
             "type": "episode",
-            "name": self.__preferences.song_metadata.get('name', 'Unknown Episode'),
-            "show": self.__preferences.song_metadata.get('show', 'Unknown Show')
-        })
+            "song": self.__preferences.song_metadata.get('name', 'Unknown Episode'),
+            "artist": self.__preferences.song_metadata.get('show', 'Unknown Show'),
+            "status": "initializing"
+        }
+        
+        # Set URL if available
+        episode_id = self.__preferences.ids
+        if episode_id:
+            progress_data["url"] = f"https://open.spotify.com/episode/{episode_id}"
+            
+        Download_JOB.report_progress(progress_data)
         
         episode = EASY_DW(self.__preferences).download_eps()
         
-        Download_JOB.report_progress({
-            "status": "done",
+        # Using standardized episode progress format
+        progress_data = {
             "type": "episode",
-            "name": self.__preferences.song_metadata.get('name', 'Unknown Episode'),
-            "show": self.__preferences.song_metadata.get('show', 'Unknown Show')
-        })
+            "song": self.__preferences.song_metadata.get('name', 'Unknown Episode'),
+            "artist": self.__preferences.song_metadata.get('show', 'Unknown Show'),
+            "status": "done"
+        }
+        
+        # Set URL if available
+        episode_id = self.__preferences.ids
+        if episode_id:
+            progress_data["url"] = f"https://open.spotify.com/episode/{episode_id}"
+            
+        Download_JOB.report_progress(progress_data)
         
         return episode
 
     def dw2(self) -> Episode:
-        Download_JOB.report_progress({
-            "status": "initializing",
+        # Using standardized episode progress format
+        progress_data = {
             "type": "episode",
-            "name": self.__preferences.song_metadata.get('name', 'Unknown Episode'),
-            "show": self.__preferences.song_metadata.get('show', 'Unknown Show')
-        })
+            "song": self.__preferences.song_metadata.get('name', 'Unknown Episode'),
+            "artist": self.__preferences.song_metadata.get('show', 'Unknown Show'),
+            "status": "initializing"
+        }
+        
+        # Set URL if available
+        episode_id = self.__preferences.ids
+        if episode_id:
+            progress_data["url"] = f"https://open.spotify.com/episode/{episode_id}"
+            
+        Download_JOB.report_progress(progress_data)
         
         episode = EASY_DW(self.__preferences).get_no_dw_track()
         download_cli(self.__preferences)
         
-        Download_JOB.report_progress({
-            "status": "done",
+        # Using standardized episode progress format
+        progress_data = {
             "type": "episode",
-            "name": self.__preferences.song_metadata.get('name', 'Unknown Episode'),
-            "show": self.__preferences.song_metadata.get('show', 'Unknown Show')
-        })
+            "song": self.__preferences.song_metadata.get('name', 'Unknown Episode'),
+            "artist": self.__preferences.song_metadata.get('show', 'Unknown Show'),
+            "status": "done"
+        }
+        
+        # Set URL if available
+        episode_id = self.__preferences.ids
+        if episode_id:
+            progress_data["url"] = f"https://open.spotify.com/episode/{episode_id}"
+            
+        Download_JOB.report_progress(progress_data)
         
         return episode
