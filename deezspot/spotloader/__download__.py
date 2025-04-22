@@ -267,7 +267,9 @@ class EASY_DW:
                 "parent": {
                     "type": "playlist",
                     "name": playlist_name,
-                    "owner": playlist_data.get('owner', {}).get('display_name', 'unknown')
+                    "owner": playlist_data.get('owner', {}).get('display_name', 'unknown'),
+                    "total_tracks": total_tracks,
+                    "url": f"https://open.spotify.com/playlist/{playlist_data.get('id', '')}"
                 }
             })
         elif self.__parent == "album":
@@ -283,7 +285,9 @@ class EASY_DW:
                 "parent": {
                     "type": "album",
                     "title": album_name,
-                    "artist": album_artist
+                    "artist": album_artist,
+                    "total_tracks": total_tracks,
+                    "url": f"https://open.spotify.com/album/{self.__song_metadata.get('album_id', '')}"
                 }
             })
             
@@ -830,6 +834,21 @@ class DW_ALBUM:
         self.__song_metadata_items = self.__song_metadata.items()
 
     def dw(self) -> Album:
+        # Report album initializing status
+        album_name = self.__song_metadata.get('album', 'Unknown Album')
+        album_artist = self.__song_metadata.get('artist', 'Unknown Artist')
+        total_tracks = self.__song_metadata.get('nb_tracks', 0)
+        album_id = self.__ids
+        
+        Download_JOB.report_progress({
+            "type": "album",
+            "artist": album_artist,
+            "status": "initializing",
+            "total_tracks": total_tracks,
+            "title": album_name,
+            "url": f"https://open.spotify.com/album/{album_id}"
+        })
+        
         pic = self.__song_metadata['image']
         image = request(pic).content
         self.__song_metadata['image'] = image
@@ -881,6 +900,22 @@ class DW_ALBUM:
                 custom_dir_format=custom_dir_format
             )
             album.zip_path = zip_name
+            
+        # Report album done status
+        album_name = self.__song_metadata.get('album', 'Unknown Album')
+        album_artist = self.__song_metadata.get('artist', 'Unknown Artist')
+        total_tracks = self.__song_metadata.get('nb_tracks', 0)
+        album_id = self.__ids
+        
+        Download_JOB.report_progress({
+            "type": "album",
+            "artist": album_artist,
+            "status": "done",
+            "total_tracks": total_tracks,
+            "title": album_name,
+            "url": f"https://open.spotify.com/album/{album_id}"
+        })
+        
         return album
 
     def dw2(self) -> Album:
@@ -950,11 +985,40 @@ class DW_PLAYLIST:
             zip_name = f"{self.__output_dir}/{playlist_title} [playlist {self.__ids}]"
             create_zip(tracks, zip_name=zip_name)
             playlist.zip_path = zip_name
+            
+        # Report playlist done status
+        playlist_name = self.__json_data.get('name', 'Unknown Playlist')
+        playlist_owner = self.__json_data.get('owner', {}).get('display_name', 'Unknown Owner')
+        total_tracks = self.__json_data.get('tracks', {}).get('total', 0)
+        playlist_id = self.__ids
+        
+        Download_JOB.report_progress({
+            "type": "playlist",
+            "owner": playlist_owner,
+            "status": "done",
+            "total_tracks": total_tracks,
+            "name": playlist_name,
+            "url": f"https://open.spotify.com/playlist/{playlist_id}"
+        })
+        
         return playlist
 
     def dw2(self) -> Playlist:
-        playlist_name = self.__json_data.get('name', 'unknown')
+        # Extract playlist metadata for reporting
+        playlist_name = self.__json_data.get('name', 'Unknown Playlist')
+        playlist_owner = self.__json_data.get('owner', {}).get('display_name', 'Unknown Owner')
         total_tracks = self.__json_data.get('tracks', {}).get('total', 'unknown')
+        playlist_id = self.__ids
+        
+        # Report playlist initializing status
+        Download_JOB.report_progress({
+            "type": "playlist",
+            "owner": playlist_owner,
+            "status": "initializing",
+            "total_tracks": total_tracks,
+            "name": playlist_name,
+            "url": f"https://open.spotify.com/playlist/{playlist_id}"
+        })
         
         playlist = Playlist()
         tracks = playlist.tracks
@@ -986,7 +1050,9 @@ class DW_PLAYLIST:
                 "parent": {
                     "type": "playlist",
                     "name": playlist_name,
-                    "owner": self.__json_data.get('owner', {}).get('display_name', 'unknown')
+                    "owner": self.__json_data.get('owner', {}).get('display_name', 'unknown'),
+                    "total_tracks": total_tracks,
+                    "url": f"https://open.spotify.com/playlist/{self.__json_data.get('id', '')}"
                 },
                 "url": f"https://open.spotify.com/track/{c_song_metadata['ids']}"
             }
@@ -998,6 +1064,22 @@ class DW_PLAYLIST:
             zip_name = f"{self.__output_dir}/{playlist_title} [playlist {self.__ids}]"
             create_zip(tracks, zip_name=zip_name)
             playlist.zip_path = zip_name
+            
+        # Report playlist done status
+        playlist_name = self.__json_data.get('name', 'Unknown Playlist')
+        playlist_owner = self.__json_data.get('owner', {}).get('display_name', 'Unknown Owner')
+        total_tracks = self.__json_data.get('tracks', {}).get('total', 0)
+        playlist_id = self.__ids
+        
+        Download_JOB.report_progress({
+            "type": "playlist",
+            "owner": playlist_owner,
+            "status": "done",
+            "total_tracks": total_tracks,
+            "name": playlist_name,
+            "url": f"https://open.spotify.com/playlist/{playlist_id}"
+        })
+        
         return playlist
 
 class DW_EPISODE:

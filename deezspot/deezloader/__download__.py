@@ -356,7 +356,9 @@ class EASY_DW:
                     "parent": {
                         "type": "playlist",
                         "name": playlist_name,
-                        "owner": playlist_data.get('creator', {}).get('name', 'unknown')
+                        "owner": playlist_data.get('creator', {}).get('name', 'unknown'),
+                        "total_tracks": total_tracks,
+                        "url": f"https://deezer.com/playlist/{self.__preferences.json_data.get('id', '')}"
                     }
                 })
             elif self.__parent == "album":
@@ -372,7 +374,9 @@ class EASY_DW:
                     "parent": {
                         "type": "album",
                         "title": album_name,
-                        "artist": album_artist
+                        "artist": album_artist,
+                        "total_tracks": total_tracks,
+                        "url": f"https://deezer.com/album/{self.__ids if hasattr(self, '__ids') else ''}"
                     }
                 })
         
@@ -768,6 +772,20 @@ class DW_ALBUM:
         self.__song_metadata_items = self.__song_metadata.items()
 
     def dw(self) -> Album:
+        # Report album initializing status
+        album_name = self.__song_metadata.get('album', 'Unknown Album')
+        album_artist = self.__song_metadata.get('artist', 'Unknown Artist')
+        total_tracks = self.__song_metadata.get('nb_tracks', 0)
+        
+        Download_JOB.report_progress({
+            "type": "album",
+            "artist": album_artist,
+            "status": "initializing",
+            "total_tracks": total_tracks,
+            "title": album_name,
+            "url": f"https://deezer.com/album/{self.__ids}"
+        })
+        
         infos_dw = API_GW.get_album_data(self.__ids)['data']
 
         md5_image = infos_dw[0]['ALB_PICTURE']
@@ -890,6 +908,20 @@ class DW_ALBUM:
             )
             album.zip_path = zip_name
 
+        # Report album done status
+        album_name = self.__song_metadata.get('album', 'Unknown Album')
+        album_artist = self.__song_metadata.get('artist', 'Unknown Artist')
+        total_tracks = self.__song_metadata.get('nb_tracks', 0)
+        
+        Download_JOB.report_progress({
+            "type": "album",
+            "artist": album_artist,
+            "status": "done",
+            "total_tracks": total_tracks,
+            "title": album_name,
+            "url": f"https://deezer.com/album/{self.__ids}"
+        })
+        
         return album
 
 class DW_PLAYLIST:
@@ -907,6 +939,21 @@ class DW_PLAYLIST:
         self.__quality_download = self.__preferences.quality_download
 
     def dw(self) -> Playlist:
+        # Extract playlist metadata for reporting
+        playlist_name = self.__json_data.get('title', 'Unknown Playlist')
+        playlist_owner = self.__json_data.get('creator', {}).get('name', 'Unknown Owner')
+        total_tracks = self.__json_data.get('nb_tracks', 0)
+        
+        # Report playlist initializing status
+        Download_JOB.report_progress({
+            "type": "playlist",
+            "owner": playlist_owner,
+            "status": "initializing",
+            "total_tracks": total_tracks,
+            "name": playlist_name,
+            "url": f"https://deezer.com/playlist/{self.__ids}"
+        })
+        
         # Retrieve playlist data from API
         infos_dw = API_GW.get_playlist_data(self.__ids)['data']
         
@@ -974,6 +1021,20 @@ class DW_PLAYLIST:
             create_zip(tracks, zip_name=zip_name)
             playlist.zip_path = zip_name
 
+        # Report playlist done status
+        playlist_name = self.__json_data.get('title', 'Unknown Playlist')
+        playlist_owner = self.__json_data.get('creator', {}).get('name', 'Unknown Owner')
+        total_tracks = self.__json_data.get('nb_tracks', 0)
+        
+        Download_JOB.report_progress({
+            "type": "playlist",
+            "owner": playlist_owner,
+            "status": "done",
+            "total_tracks": total_tracks,
+            "name": playlist_name,
+            "url": f"https://deezer.com/playlist/{self.__ids}"
+        })
+        
         return playlist
 
 class DW_EPISODE:
