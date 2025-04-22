@@ -179,11 +179,13 @@ class EASY_DW:
     def __init__(
         self,
         infos_dw: dict,
-        preferences: Preferences
+        preferences: Preferences,
+        parent: str = None  # Can be 'album', 'playlist', or None for individual track
     ) -> None:
         
         self.__preferences = preferences
-
+        self.__parent = parent  # Store the parent type
+        
         self.__infos_dw = infos_dw
         self.__ids = preferences.ids
         self.__link = preferences.link
@@ -330,14 +332,17 @@ class EASY_DW:
         current_title = self.__song_metadata['music']
         current_album = self.__song_metadata['album']
         if self.__track_already_exists(current_title, current_album):
-            Download_JOB.report_progress({
+            progress_data = {
                 "status": "skipped",
                 "type": self.__download_type,
                 "album": current_album,
                 "song": current_title,
                 "artist": self.__song_metadata['artist'],
                 "reason": "Track already exists"
-            })
+            }
+            if self.__parent:
+                progress_data["parent"] = self.__parent
+            Download_JOB.report_progress(progress_data)
             skipped_track = Track(
                 self.__song_metadata,
                 None, None, None,
@@ -348,13 +353,16 @@ class EASY_DW:
             return skipped_track
 
         # Initial download start status
-        Download_JOB.report_progress({
+        progress_data = {
             "status": "downloading",
             "type": self.__download_type,
             "album": self.__song_metadata['album'],
             "song": self.__song_metadata['music'],
             "artist": self.__song_metadata['artist']
-        })
+        }
+        if self.__parent:
+            progress_data["parent"] = self.__parent
+        Download_JOB.report_progress(progress_data)
 
         try:
             if self.__infos_dw.get('__TYPE__') == 'episode':
@@ -365,13 +373,16 @@ class EASY_DW:
                     raise e
             else:
                 self.download_try()
-                Download_JOB.report_progress({
+                progress_data = {
                     "status": "done",
                     "type": "track",
                     "album": self.__song_metadata['album'],
                     "song": self.__song_metadata['music'],
                     "artist": self.__song_metadata['artist']
-                })
+                }
+                if self.__parent:
+                    progress_data["parent"] = self.__parent
+                Download_JOB.report_progress(progress_data)
         except TrackNotFound:
             try:
                 self.__fallback_ids = API.not_found(song, self.__song_metadata['music'])
@@ -620,7 +631,8 @@ class DW_TRACK:
 
         infos_dw['media_url'] = media[0]
 
-        track = EASY_DW(infos_dw, self.__preferences).easy_dw()
+        # For individual tracks, parent is None (not part of album or playlist)
+        track = EASY_DW(infos_dw, self.__preferences, parent=None).easy_dw()
 
         # Check if track failed but was NOT intentionally skipped
         if not track.success and not getattr(track, 'was_skipped', False):
@@ -765,7 +777,7 @@ class DW_ALBUM:
             c_preferences.link = f"https://deezer.com/track/{c_preferences.ids}"
             
             try:
-                track = EASY_DW(c_infos_dw, c_preferences).download_try()
+                track = EASY_DW(c_infos_dw, c_preferences, parent='album').download_try()
             except TrackNotFound:
                 try:
                     song = f"{c_song_metadata['music']} - {c_song_metadata.get('artist', self.__song_metadata['artist'])}"
@@ -773,7 +785,7 @@ class DW_ALBUM:
                     c_infos_dw = API_GW.get_song_data(ids)
                     c_media = Download_JOB.check_sources([c_infos_dw], self.__quality_download)
                     c_infos_dw['media_url'] = c_media[0]
-                    track = EASY_DW(c_infos_dw, c_preferences).download_try()
+                    track = EASY_DW(c_infos_dw, c_preferences, parent='album').download_try()
                 except TrackNotFound:
                     track = Track(c_song_metadata, None, None, None, None, None)
                     track.success = False
@@ -864,7 +876,7 @@ class DW_PLAYLIST:
             c_preferences.song_metadata = c_song_metadata
 
             # Download the track using the EASY_DW downloader
-            track = EASY_DW(c_infos_dw, c_preferences).easy_dw()
+            track = EASY_DW(c_infos_dw, c_preferences, parent='playlist').easy_dw()
 
             current_track_str = f"{idx}/{total_tracks}"
             Download_JOB.report_progress({
@@ -918,9 +930,6 @@ class DW_EPISODE:
         self.__not_interface = preferences.not_interface
         self.__quality_download = preferences.quality_download
         
-    def __sanitize_filename(self, filename: str) -> str:
-        return re.sub(r'[<>:"/\\|?*]', '', filename)[:200]
-
     def dw(self) -> Track:
         infos_dw = API_GW.get_episode_data(self.__ids)
         infos_dw['__TYPE__'] = 'episode'
@@ -940,7 +949,9 @@ class DW_EPISODE:
             if not direct_url:
                 raise TrackNotFound("No direct URL found")
             
-            safe_filename = self.__sanitize_filename(self.__preferences.song_metadata['music'])
+            from deezspot.libutils.utils import sanitize_name
+            from pathlib import Path
+            safe_filename = sanitize_name(self.__preferences.song_metadata['music'])
             Path(self.__output_dir).mkdir(parents=True, exist_ok=True)
             output_path = os.path.join(self.__output_dir, f"{safe_filename}.mp3")
             

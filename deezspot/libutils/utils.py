@@ -39,23 +39,40 @@ def __check_dir(directory):
     if not isdir(directory):
         makedirs(directory)
 
-def var_excape(string):
+def sanitize_name(string, max_length=200):
+    """Sanitize a string for use as a filename or directory name.
+    
+    Args:
+        string: The string to sanitize
+        max_length: Maximum length for the resulting string
+        
+    Returns:
+        A sanitized string safe for use in file paths
+    """
+    if string is None:
+        return "Unknown"
+        
+    # Convert to string if not already
+    string = str(string)
+    
     # Enhance character replacement for filenames
     replacements = {
-        "\\": "",
-        "/": "",
-        ":": "",
-        "*": "",
-        "?": "",
-        "\"": "",
-        "<": "",
-        ">": "",
-        "|": "-",
-        "&": "and",
-        "$": "s",
-        "'": "",
-        "`": "",
-        ";": ",",  # Replace semicolons with commas to avoid conflicts with our separator
+        "\\": "-",  # Backslash to hyphen
+        "/": "-",   # Forward slash to hyphen
+        ":": "-",   # Colon to hyphen
+        "*": "+",   # Asterisk to plus
+        "?": "",     # Question mark removed
+        "\"": "'",  # Double quote to single quote
+        "<": "[",   # Less than to open bracket
+        ">": "]",   # Greater than to close bracket
+        "|": "-",   # Pipe to hyphen
+        "&": "and", # Ampersand to 'and'
+        "$": "s",   # Dollar to 's'
+        ";": ",",   # Semicolon to comma
+        "\t": " ",  # Tab to space
+        "\n": " ",  # Newline to space
+        "\r": " ",  # Carriage return to space
+        "\0": "",   # Null byte removed
     }
     
     for old, new in replacements.items():
@@ -64,7 +81,29 @@ def var_excape(string):
     # Remove any other non-printable characters
     string = ''.join(char for char in string if char.isprintable())
     
-    return string.strip()
+    # Remove leading/trailing whitespace
+    string = string.strip()
+    
+    # Replace multiple spaces with a single space
+    string = re.sub(r'\s+', ' ', string)
+    
+    # Truncate if too long
+    if len(string) > max_length:
+        string = string[:max_length]
+        
+    # Ensure we don't end with a dot or space (can cause issues in some filesystems)
+    string = string.rstrip('. ')
+    
+    # Provide a fallback for empty strings
+    if not string:
+        string = "Unknown"
+        
+    return string
+
+# Keep the original function name for backward compatibility
+def var_excape(string):
+    """Legacy function name for backward compatibility."""
+    return sanitize_name(string)
 
 def convert_to_date(date: str):
     if date == "0000-00-00":

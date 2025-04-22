@@ -119,10 +119,12 @@ class Download_JOB:
 class EASY_DW:
     def __init__(
         self,
-        preferences: Preferences
+        preferences: Preferences,
+        parent: str = None  # Can be 'album', 'playlist', or None for individual track
     ) -> None:
         
         self.__preferences = preferences
+        self.__parent = parent  # Store the parent type
 
         self.__ids = preferences.ids
         self.__link = preferences.link
@@ -243,13 +245,19 @@ class EASY_DW:
         self.__song_metadata['image'] = image
 
         # Log initial "downloading" status for track
-        Download_JOB.report_progress({
+        progress_data = {
             "status": "downloading",
             "type": "track",
             "album": self.__song_metadata.get("album", ""),
             "song": self.__song_metadata.get("music", ""),
             "artist": self.__song_metadata.get("artist", "")
-        })
+        }
+        
+        # Add parent info if track is part of album or playlist
+        if self.__parent:
+            progress_data["parent"] = self.__parent
+            
+        Download_JOB.report_progress(progress_data)
 
         try:
             self.download_try()
@@ -327,14 +335,21 @@ class EASY_DW:
         current_artist = self.__song_metadata.get('artist')
 
         if self.track_exists(current_title, current_album):
-            Download_JOB.report_progress({
+            progress_data = {
                 "status": "skipped",
                 "type": "track", 
                 "album": current_album,
                 "song": current_title,
                 "artist": current_artist,
                 "reason": "Track already exists"
-            })
+            }
+            
+            # Add parent info if track is part of album or playlist
+            if self.__parent:
+                progress_data["parent"] = self.__parent
+                
+            Download_JOB.report_progress(progress_data)
+            
             # Mark track as intentionally skipped
             self.__c_track.success = False
             self.__c_track.was_skipped = True
@@ -379,13 +394,19 @@ class EASY_DW:
                                             break
                                         f.write(chunk)
                                         bytes_written += len(chunk)
-                                        Download_JOB.report_progress({
+                                        progress_data = {
                                             "status": "real_time",
                                             "song": self.__song_metadata.get("music", ""),
                                             "artist": self.__song_metadata.get("artist", ""),
                                             "time_elapsed": int((time.time() - start_time)*1000),
                                             "percentage": bytes_written / total_size
-                                        })
+                                        }
+                                        
+                                        # Add parent info if track is part of album or playlist
+                                        if self.__parent:
+                                            progress_data["parent"] = self.__parent
+                                            
+                                        Download_JOB.report_progress(progress_data)
                                         expected_time = bytes_written / rate_limit
                                         if expected_time > (time.time() - start_time):
                                             time.sleep(expected_time - (time.time() - start_time))
@@ -449,7 +470,7 @@ class EASY_DW:
                 global GLOBAL_RETRY_COUNT
                 GLOBAL_RETRY_COUNT += 1
                 retries += 1
-                Download_JOB.report_progress({
+                progress_data = {
                     "status": "retrying",
                     "retry_count": retries,
                     "seconds_left": retry_delay,
@@ -457,7 +478,13 @@ class EASY_DW:
                     "artist": self.__song_metadata['artist'],
                     "album": self.__song_metadata['album'],
                     "error": str(e)
-                })
+                }
+                
+                # Add parent info if track is part of album or playlist
+                if self.__parent:
+                    progress_data["parent"] = self.__parent
+                    
+                Download_JOB.report_progress(progress_data)
                 if retries >= max_retries or GLOBAL_RETRY_COUNT >= GLOBAL_MAX_RETRIES:
                     # Final cleanup before giving up
                     if os.path.exists(self.__song_path):
@@ -471,7 +498,6 @@ class EASY_DW:
         except Exception as e:
             logger.error(json.dumps({
                 "status": "retrying",
-                "retry_count": retries,
                 "action": "convert_audio",
                 "song": self.__song_metadata['music'],
                 "artist": self.__song_metadata['artist'],
@@ -494,13 +520,19 @@ class EASY_DW:
 
         self.__write_track()
         write_tags(self.__c_track)
-        Download_JOB.report_progress({
+        progress_data = {
             "status": "done",
-            "type": "track",
+            "type": "track", 
             "album": self.__song_metadata.get("album", ""),
             "song": self.__song_metadata.get("music", ""),
             "artist": self.__song_metadata.get("artist", "")
-        })
+        }
+        
+        # Add parent info if track is part of album or playlist
+        if self.__parent:
+            progress_data["parent"] = self.__parent
+            
+        Download_JOB.report_progress(progress_data)
         return self.__c_track
 
     def download_eps(self) -> Episode:
@@ -767,7 +799,7 @@ class DW_ALBUM:
             c_preferences.ids = c_song_metadata['ids']
             c_preferences.link = f"https://open.spotify.com/track/{c_preferences.ids}"
             try:
-                track = EASY_DW(c_preferences).download_try()
+                track = EASY_DW(c_preferences, parent='album').download_try()
             except TrackNotFound:
                 track = Track(c_song_metadata, None, None, None, None, None)
                 track.success = False
@@ -839,7 +871,7 @@ class DW_PLAYLIST:
             c_preferences = deepcopy(self.__preferences)
             c_preferences.ids = c_song_metadata['ids']
             c_preferences.song_metadata = c_song_metadata
-            track = EASY_DW(c_preferences).easy_dw()
+            track = EASY_DW(c_preferences, parent='playlist').easy_dw()
 
             current_track_str = f"{idx}/{total_tracks}"
             Download_JOB.report_progress({
@@ -897,7 +929,7 @@ class DW_PLAYLIST:
             c_preferences = deepcopy(self.__preferences)
             c_preferences.ids = c_song_metadata['ids']
             c_preferences.song_metadata = c_song_metadata
-            track = EASY_DW(c_preferences).get_no_dw_track()
+            track = EASY_DW(c_preferences, parent='playlist').get_no_dw_track()
             if not track.success:
                 song = f"{c_song_metadata['music']} - {c_song_metadata['artist']}"
                 logger.warning(f"Cannot download {song}")
