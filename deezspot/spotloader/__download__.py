@@ -450,6 +450,7 @@ class EASY_DW:
                                 chunk_size = 4096
                                 bytes_written = 0
                                 start_time = time.time()
+                                last_report_time = 0
                                 try:
                                     while True:
                                         chunk = c_stream.read(chunk_size)
@@ -457,23 +458,31 @@ class EASY_DW:
                                             break
                                         f.write(chunk)
                                         bytes_written += len(chunk)
-                                        # Create real-time progress data with the new format
-                                        progress_data = {
-                                            "type": "track",
-                                            "song": self.__song_metadata.get("music", ""),
-                                            "artist": self.__song_metadata.get("artist", ""),
-                                            "status": "real_time",
-                                            "url": self.__link,
-                                            "time_elapsed": int((time.time() - start_time)*1000),
-                                            "percentage": bytes_written / total_size
-                                        }
                                         
-                                        # Add parent info based on parent type
-                                        if self.__parent == "playlist" and hasattr(self.__preferences, "json_data"):
-                                            playlist_data = self.__preferences.json_data
-                                            playlist_name = playlist_data.get('name', 'unknown')
-                                            total_tracks = playlist_data.get('tracks', {}).get('total', 'unknown')
-                                            current_track = getattr(self.__preferences, 'track_number', 0)
+                                        # Report progress every 0.5 seconds
+                                        current_time = time.time()
+                                        if current_time - last_report_time >= 0.5:
+                                            last_report_time = current_time
+                                            # Calculate percentage with two decimal places
+                                            percentage = round((bytes_written / total_size) * 100, 2)
+                                            
+                                            # Create real-time progress data with the new format
+                                            progress_data = {
+                                                "type": "track",
+                                                "song": self.__song_metadata.get("music", ""),
+                                                "artist": self.__song_metadata.get("artist", ""),
+                                                "status": "real-time",
+                                                "url": self.__link,
+                                                "time_elapsed": int((current_time - start_time) * 1000),
+                                                "progress": percentage
+                                            }
+                                            
+                                            # Add parent info based on parent type
+                                            if self.__parent == "playlist" and hasattr(self.__preferences, "json_data"):
+                                                playlist_data = self.__preferences.json_data
+                                                playlist_name = playlist_data.get('name', 'unknown')
+                                                total_tracks = playlist_data.get('tracks', {}).get('total', 'unknown')
+                                                current_track = getattr(self.__preferences, 'track_number', 0)
                                             
                                             progress_data.update({
                                                 "current_track": current_track,
