@@ -608,16 +608,12 @@ class EASY_DW:
                     # Unregister the download
                     unregister_active_download(self.__song_path)
                     
-                    # Retry logic
-                    global GLOBAL_RETRY_COUNT
-                    GLOBAL_RETRY_COUNT += 1
-                    retries += 1
-                
-                # After successful download, unregister the file
+                # After successful download, unregister the file (moved here from below)
                 unregister_active_download(self.__song_path)
                 break
+                
             except Exception as e:
-                # Handle retry logic first to avoid variable scope issues
+                # Handle retry logic
                 global GLOBAL_RETRY_COUNT
                 GLOBAL_RETRY_COUNT += 1
                 retries += 1
