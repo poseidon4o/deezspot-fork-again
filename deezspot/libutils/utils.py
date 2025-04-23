@@ -135,31 +135,74 @@ def apply_custom_format(format_str, metadata: dict, pad_tracks=True) -> str:
     """
     def replacer(match):
         key = match.group(1)
-        raw_value = metadata.get(key)
+        # Alias and special keys
+        if key == 'album_artist':
+            raw_value = metadata.get('ar_album', metadata.get('album_artist'))
+        elif key == 'year':
+            raw_value = metadata.get('release_date', metadata.get('year'))
+        elif key == 'date':
+            raw_value = metadata.get('release_date', metadata.get('date'))
+        elif key == 'discnum':
+            raw_value = metadata.get('disc_number', metadata.get('discnum'))
+        else:
+            # All other placeholders map directly
+            raw_value = metadata.get(key)
+        
         # Friendly names for missing metadata
         key_mappings = {
             'ar_album': 'album artist',
+            'album_artist': 'album artist',
             'artist': 'artist',
             'album': 'album',
             'tracknum': 'track number',
             'discnum': 'disc number',
-            'show': 'show',
-            'name': 'episode name',
-            'music': 'track title',
+            'date': 'release date',
+            'year': 'year',
+            'genre': 'genre',
             'isrc': 'ISRC',
-            'upc': 'UPC',
+            'explicit': 'explicit flag',
+            'duration': 'duration',
+            'publisher': 'publisher',
+            'composer': 'composer',
+            'copyright': 'copyright',
+            'author': 'author',
+            'lyricist': 'lyricist',
+            'version': 'version',
+            'comment': 'comment',
+            'encodedby': 'encoded by',
+            'language': 'language',
+            'lyrics': 'lyrics',
+            'mood': 'mood',
+            'rating': 'rating',
+            'website': 'website',
+            'replaygain_album_gain': 'replaygain album gain',
+            'replaygain_album_peak': 'replaygain album peak',
+            'replaygain_track_gain': 'replaygain track gain',
+            'replaygain_track_peak': 'replaygain track peak',
         }
-        # Special handling for tracknum to support padding
+        
+        # Custom formatting for specific keys
         if key == 'tracknum' and pad_tracks and raw_value not in (None, ''):
             try:
                 return sanitize_name(f"{int(raw_value):02d}")
             except (ValueError, TypeError):
                 pass
+        if key == 'discnum' and raw_value not in (None, ''):
+            try:
+                return sanitize_name(f"{int(raw_value):02d}")
+            except (ValueError, TypeError):
+                pass
+        if key == 'year' and raw_value not in (None, ''):
+            m = re.match(r"^(\d{4})", str(raw_value))
+            if m:
+                return sanitize_name(m.group(1))
+        
         # Handle missing metadata with descriptive default
         if raw_value in (None, ''):
             friendly = key_mappings.get(key, key.replace('_', ' '))
             return sanitize_name(f"Unknown {friendly}")
-        # Default handling for all other keys
+        
+        # Default handling
         return sanitize_name(str(raw_value))
     return re.sub(r'%(\w+)%', replacer, format_str)
 
