@@ -4,6 +4,7 @@ import json
 import re
 from os.path import isfile
 from copy import deepcopy
+from deezspot.libutils.audio_converter import convert_audio, parse_format_string
 from deezspot.deezloader.dee_api import API
 from deezspot.deezloader.deegw_api import API_GW
 from deezspot.deezloader.deezer_settings import qualities
@@ -195,6 +196,7 @@ class EASY_DW:
         self.__quality_download = preferences.quality_download
         self.__recursive_quality = preferences.recursive_quality
         self.__recursive_download = preferences.recursive_download
+        self.__convert_to = getattr(preferences, 'convert_to', None)
 
 
         if self.__infos_dw.get('__TYPE__') == 'episode':
@@ -338,8 +340,9 @@ class EASY_DW:
                 "song": current_title,
                 "artist": self.__song_metadata['artist'],
                 "status": "skipped",
+                "url": self.__link,
                 "reason": "Track already exists",
-                "url": self.__link
+                "convert_to": self.__convert_to
             }
             
             # Add parent info based on parent type
@@ -396,7 +399,8 @@ class EASY_DW:
             "song": self.__song_metadata['music'],
             "artist": self.__song_metadata['artist'],
             "status": "progress",
-            "url": self.__link
+            "url": self.__link,
+            "convert_to": self.__convert_to
         }
         
         # Add parent info based on parent type
@@ -447,7 +451,8 @@ class EASY_DW:
                     "type": "track",
                     "song": self.__song_metadata['music'],
                     "artist": self.__song_metadata['artist'],
-                    "status": "done"
+                    "status": "done",
+                    "convert_to": self.__convert_to
                 }
                 
                 # Use Spotify URL if available (for downloadspo functions), otherwise use Deezer link
@@ -682,6 +687,31 @@ class EASY_DW:
                     raise
                 
                 self.__add_more_tags()
+                
+                # Apply audio conversion if requested
+                if self.__convert_to:
+                    format_name, bitrate = parse_format_string(self.__convert_to)
+                    if format_name:
+                        # Register and unregister functions for tracking downloads
+                        from deezspot.deezloader.__download__ import register_active_download, unregister_active_download
+                        try:
+                            # Update the path with the converted file path
+                            converted_path = convert_audio(
+                                self.__song_path, 
+                                format_name, 
+                                bitrate,
+                                register_active_download,
+                                unregister_active_download
+                            )
+                            if converted_path != self.__song_path:
+                                # Update path in track object if conversion happened
+                                self.__song_path = converted_path
+                                self.__c_track.song_path = converted_path
+                        except Exception as conv_error:
+                            # Log conversion error but continue with original file
+                            logger.error(f"Audio conversion error: {str(conv_error)}")
+                
+                # Write tags to the final file (original or converted)
                 write_tags(self.__c_track)
             except Exception as e:
                 if isfile(self.__song_path):
@@ -707,7 +737,8 @@ class EASY_DW:
                     "song": self.__song_metadata.get('music', ''),
                     "artist": self.__song_metadata.get('artist', ''),
                     "error": error_msg,
-                    "url": getattr(self.__preferences, 'spotify_url', None) or self.__link
+                    "url": getattr(self.__preferences, 'spotify_url', None) or self.__link,
+                    "convert_to": self.__convert_to
                 }
                 
                 # Add parent info based on parent type
@@ -856,10 +887,6 @@ class EASY_DW:
                     need['LYRICS_SYNC_JSON']
                 )
 
-            self.__song_metadata['lyric'] = need['LYRICS_TEXT']
-            self.__song_metadata['copyright'] = need['LYRICS_COPYRIGHTS']
-            self.__song_metadata['lyricist'] = need['LYRICS_WRITERS']
-            
 class DW_TRACK:
     def __init__(
         self,

@@ -98,7 +98,8 @@ class SpoLogin:
         pad_tracks=True,
         initial_retry_delay=30,
         retry_delay_increase=30,
-        max_retries=5
+        max_retries=5,
+        convert_to=None
     ) -> Track:
         try:
             link_is_valid(link_track)
@@ -125,6 +126,7 @@ class SpoLogin:
             preferences.initial_retry_delay = initial_retry_delay
             preferences.retry_delay_increase = retry_delay_increase
             preferences.max_retries = max_retries
+            preferences.convert_to = convert_to
 
             if not is_thread:
                 track = DW_TRACK(preferences).dw()
@@ -153,7 +155,8 @@ class SpoLogin:
         pad_tracks=True,
         initial_retry_delay=30,
         retry_delay_increase=30,
-        max_retries=5
+        max_retries=5,
+        convert_to=None
     ) -> Album:
         try:
             link_is_valid(link_album)
@@ -184,6 +187,7 @@ class SpoLogin:
             preferences.initial_retry_delay = initial_retry_delay
             preferences.retry_delay_increase = retry_delay_increase
             preferences.max_retries = max_retries
+            preferences.convert_to = convert_to
 
             if not is_thread:
                 album = DW_ALBUM(preferences).dw()
@@ -212,7 +216,8 @@ class SpoLogin:
         pad_tracks=True,
         initial_retry_delay=30,
         retry_delay_increase=30,
-        max_retries=5
+        max_retries=5,
+        convert_to=None
     ) -> Playlist:
         try:
             link_is_valid(link_playlist)
@@ -257,6 +262,7 @@ class SpoLogin:
             preferences.initial_retry_delay = initial_retry_delay
             preferences.retry_delay_increase = retry_delay_increase
             preferences.max_retries = max_retries
+            preferences.convert_to = convert_to
 
             if not is_thread:
                 playlist = DW_PLAYLIST(preferences).dw()
@@ -284,7 +290,8 @@ class SpoLogin:
         pad_tracks=True,
         initial_retry_delay=30,
         retry_delay_increase=30,
-        max_retries=5
+        max_retries=5,
+        convert_to=None
     ) -> Episode:
         try:
             link_is_valid(link_episode)
@@ -313,6 +320,7 @@ class SpoLogin:
             preferences.initial_retry_delay = initial_retry_delay
             preferences.retry_delay_increase = retry_delay_increase
             preferences.max_retries = max_retries
+            preferences.convert_to = convert_to
 
             if not is_thread:
                 episode = DW_EPISODE(preferences).dw()
@@ -343,7 +351,8 @@ class SpoLogin:
         pad_tracks=True,
         initial_retry_delay=30,
         retry_delay_increase=30,
-        max_retries=5
+        max_retries=5,
+        convert_to=None
     ):
         """
         Download all albums (or a subset based on album_type and limit) from an artist.
@@ -381,7 +390,8 @@ class SpoLogin:
                     pad_tracks=pad_tracks,
                     initial_retry_delay=initial_retry_delay,
                     retry_delay_increase=retry_delay_increase,
-                    max_retries=max_retries
+                    max_retries=max_retries,
+                    convert_to=convert_to
                 )
                 downloaded_albums.append(downloaded_album)
             return downloaded_albums
@@ -405,7 +415,8 @@ class SpoLogin:
         pad_tracks=True,
         initial_retry_delay=30,
         retry_delay_increase=30,
-        max_retries=5
+        max_retries=5,
+        convert_to=None
     ) -> Smart:
         try:
             link_is_valid(link)

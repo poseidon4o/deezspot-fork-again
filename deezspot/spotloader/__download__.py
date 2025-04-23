@@ -14,6 +14,7 @@ from deezspot.spotloader.spotify_settings import qualities
 from deezspot.libutils.others_settings import answers
 from deezspot.__taggers__ import write_tags, check_track
 from librespot.audio.decoders import AudioQuality, VorbisOnlyAudioQuality
+from deezspot.libutils.audio_converter import convert_audio, parse_format_string
 from os import (
     remove,
     system,
@@ -136,6 +137,7 @@ class EASY_DW:
         self.__recursive_download = preferences.recursive_download
         self.__type = "episode" if preferences.is_episode else "track"  # New type parameter
         self.__real_time_dl = preferences.real_time_dl
+        self.__convert_to = getattr(preferences, 'convert_to', None)
 
         self.__c_quality = qualities[self.__quality_download]
         self.__fallback_ids = self.__ids
@@ -204,6 +206,7 @@ class EASY_DW:
         self.__c_episode.set_fallback_ids(self.__fallback_ids)
 
     def __convert_audio(self) -> None:
+        # First, handle Spotify's OGG to standard format conversion (always needed)
         temp_filename = self.__song_path.replace(".ogg", ".tmp")
         os_replace(self.__song_path, temp_filename)
         
@@ -211,6 +214,7 @@ class EASY_DW:
         register_active_download(temp_filename)
         
         try:
+            # Step 1: First convert the OGG file to standard format
             ffmpeg_cmd = f"ffmpeg -y -hide_banner -loglevel error -i \"{temp_filename}\" -c:a copy \"{self.__song_path}\""
             system(ffmpeg_cmd)
             
@@ -221,6 +225,27 @@ class EASY_DW:
             if os.path.exists(temp_filename):
                 remove(temp_filename)
                 unregister_active_download(temp_filename)
+            
+            # Step 2: Convert to requested format if specified
+            if self.__convert_to:
+                format_name, bitrate = parse_format_string(self.__convert_to)
+                if format_name:
+                    try:
+                        # Convert to the requested format using our standardized converter
+                        converted_path = convert_audio(
+                            self.__song_path,
+                            format_name,
+                            bitrate,
+                            register_active_download,
+                            unregister_active_download
+                        )
+                        if converted_path != self.__song_path:
+                            # Update the path to the converted file
+                            self.__song_path = converted_path
+                            self.__c_track.song_path = converted_path
+                    except Exception as conv_error:
+                        # Log conversion error but continue with original file
+                        logger.error(f"Audio conversion error: {str(conv_error)}")
                 
         except Exception as e:
             # In case of failure, try to restore the original file
@@ -376,7 +401,8 @@ class EASY_DW:
                 "artist": current_artist,
                 "status": "skipped",
                 "url": self.__link,
-                "reason": "Track already exists"
+                "reason": "Track already exists",
+                "convert_to": self.__convert_to
             }
             
             # Add parent info based on parent type
@@ -430,7 +456,8 @@ class EASY_DW:
             "song": self.__song_metadata.get("music", ""),
             "artist": self.__song_metadata.get("artist", ""),
             "status": "progress",
-            "url": self.__link
+            "url": self.__link,
+            "convert_to": self.__convert_to
         }
         
         # Add parent info based on parent type
@@ -525,7 +552,8 @@ class EASY_DW:
                                             "status": "real-time",
                                             "url": self.__link,
                                             "time_elapsed": int((current_time - start_time) * 1000),
-                                            "progress": current_percentage
+                                            "progress": current_percentage,
+                                            "convert_to": self.__convert_to
                                         }
                                         
                                         # Add parent info based on parent type
@@ -631,7 +659,8 @@ class EASY_DW:
                     "artist": self.__song_metadata.get('artist', ''),
                     "album": self.__song_metadata.get('album', ''),
                     "error": str(e),
-                    "url": self.__link
+                    "url": self.__link,
+                    "convert_to": self.__convert_to
                 }
                 
                 # Add parent info based on parent type - similar to other status messages
@@ -699,7 +728,8 @@ class EASY_DW:
                 "song": self.__song_metadata.get('music', ''),
                 "artist": self.__song_metadata.get('artist', ''),
                 "error": error_msg,
-                "url": self.__link
+                "url": self.__link,
+                "convert_to": self.__convert_to
             }
             
             # Add parent info based on parent type
@@ -774,7 +804,8 @@ class EASY_DW:
             "song": self.__song_metadata.get("music", ""),
             "artist": self.__song_metadata.get("artist", ""),
             "status": "done",
-            "url": self.__link
+            "url": self.__link,
+            "convert_to": self.__convert_to
         }
         
         # Add parent info based on parent type
@@ -850,7 +881,8 @@ class EASY_DW:
                     "song": self.__song_metadata['music'],
                     "artist": self.__song_metadata['artist'],
                     "album": self.__song_metadata['album'],
-                    "error": str(e)
+                    "error": str(e),
+                    "convert_to": self.__convert_to
                 }))
                 if retries >= max_retries or GLOBAL_RETRY_COUNT >= GLOBAL_MAX_RETRIES:
                     # Clean up any partial files before giving up
@@ -945,7 +977,8 @@ class EASY_DW:
                 "song": self.__song_metadata['music'],
                 "artist": self.__song_metadata['artist'],
                 "album": self.__song_metadata['album'],
-                "error": str(e)
+                "error": str(e),
+                "convert_to": self.__convert_to
             }))
             # Clean up if conversion fails
             if os.path.exists(self.__song_path):
