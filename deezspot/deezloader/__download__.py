@@ -665,9 +665,6 @@ class EASY_DW:
                         bytes_processed = 0
                         last_report_time = time.time()
                         
-                        # Set up the decryption
-                        from deezspot.deezloader.__download_utils__ import get_blowfish_key, get_aes_key
-                        
                         # Start decryption with real-time progress updates
                         with open(self.__song_path, 'wb') as f:
                             for chunk in chunks:
