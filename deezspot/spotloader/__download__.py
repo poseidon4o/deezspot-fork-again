@@ -617,13 +617,15 @@ class EASY_DW:
                 unregister_active_download(self.__song_path)
                 break
             except Exception as e:
+                # Handle retry logic first to avoid variable scope issues
+                global GLOBAL_RETRY_COUNT
+                GLOBAL_RETRY_COUNT += 1
+                retries += 1
+                
                 # Clean up any incomplete file
                 if os.path.exists(self.__song_path):
                     os.remove(self.__song_path)
                 unregister_active_download(self.__song_path)
-                global GLOBAL_RETRY_COUNT
-                GLOBAL_RETRY_COUNT += 1
-                retries += 1
                 progress_data = {
                     "status": "retrying",
                     "retry_count": retries,
