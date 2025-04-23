@@ -686,11 +686,71 @@ class EASY_DW:
             except Exception as e:
                 if isfile(self.__song_path):
                     os.remove(self.__song_path)
-                logger.error(f"Failed to process track: {str(e)}")
-                # Provide a more helpful error message
+                
+                # Improve error message formatting
                 error_msg = str(e)
                 if "Data must be padded" in error_msg:
-                    error_msg = f"Decryption error (padding issue) - Try a different quality setting or download format"
+                    error_msg = "Decryption error (padding issue) - Try a different quality setting or download format"
+                elif isinstance(e, ConnectionError) or "Connection" in error_msg:
+                    error_msg = "Connection error - Check your internet connection"
+                elif "timeout" in error_msg.lower():
+                    error_msg = "Request timed out - Server may be busy"
+                elif "403" in error_msg or "Forbidden" in error_msg:
+                    error_msg = "Access denied - Track might be region-restricted or premium-only"
+                elif "404" in error_msg or "Not Found" in error_msg:
+                    error_msg = "Track not found - It might have been removed"
+                
+                # Create formatted error report
+                progress_data = {
+                    "type": "track",
+                    "status": "error",
+                    "song": self.__song_metadata.get('music', ''),
+                    "artist": self.__song_metadata.get('artist', ''),
+                    "error": error_msg,
+                    "url": getattr(self.__preferences, 'spotify_url', None) or self.__link
+                }
+                
+                # Add parent info based on parent type
+                if self.__parent == "playlist" and hasattr(self.__preferences, "json_data"):
+                    playlist_data = self.__preferences.json_data
+                    playlist_name = playlist_data.get('title', 'unknown')
+                    total_tracks = getattr(self.__preferences, 'total_tracks', 0)
+                    current_track = getattr(self.__preferences, 'track_number', 0)
+                    
+                    progress_data.update({
+                        "current_track": current_track,
+                        "total_tracks": total_tracks,
+                        "parent": {
+                            "type": "playlist",
+                            "name": playlist_name,
+                            "owner": playlist_data.get('creator', {}).get('name', 'unknown'),
+                            "total_tracks": total_tracks,
+                            "url": f"https://deezer.com/playlist/{playlist_data.get('id', '')}"
+                        }
+                    })
+                elif self.__parent == "album":
+                    album_name = self.__song_metadata.get('album', '')
+                    album_artist = self.__song_metadata.get('album_artist', self.__song_metadata.get('artist', ''))
+                    total_tracks = getattr(self.__preferences, 'total_tracks', 0)
+                    current_track = getattr(self.__preferences, 'track_number', 0)
+                    
+                    progress_data.update({
+                        "current_track": current_track,
+                        "total_tracks": total_tracks,
+                        "parent": {
+                            "type": "album",
+                            "title": album_name,
+                            "artist": album_artist,
+                            "total_tracks": total_tracks,
+                            "url": f"https://deezer.com/album/{self.__ids if hasattr(self, '__ids') else ''}"
+                        }
+                    })
+                
+                # Report the error
+                Download_JOB.report_progress(progress_data)
+                logger.error(f"Failed to process track: {error_msg}")
+                
+                # Still raise the exception to maintain original flow
                 raise TrackNotFound(f"Failed to process {self.__song_path}: {error_msg}")
 
             return self.__c_track

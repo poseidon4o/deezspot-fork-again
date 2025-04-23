@@ -623,18 +623,55 @@ class EASY_DW:
                     os.remove(self.__song_path)
                 unregister_active_download(self.__song_path)
                 progress_data = {
+                    "type": "track",
                     "status": "retrying",
                     "retry_count": retries,
                     "seconds_left": retry_delay,
-                    "song": self.__song_metadata['music'],
-                    "artist": self.__song_metadata['artist'],
-                    "album": self.__song_metadata['album'],
-                    "error": str(e)
+                    "song": self.__song_metadata.get('music', ''),
+                    "artist": self.__song_metadata.get('artist', ''),
+                    "album": self.__song_metadata.get('album', ''),
+                    "error": str(e),
+                    "url": self.__link
                 }
                 
-                # Add parent info if track is part of album or playlist
-                if self.__parent:
-                    progress_data["parent"] = self.__parent
+                # Add parent info based on parent type - similar to other status messages
+                if self.__parent == "playlist" and hasattr(self.__preferences, "json_data"):
+                    playlist_data = self.__preferences.json_data
+                    playlist_name = playlist_data.get('name', 'unknown')
+                    total_tracks = playlist_data.get('tracks', {}).get('total', 'unknown')
+                    current_track = getattr(self.__preferences, 'track_number', 0)
+                    playlist_owner = playlist_data.get('owner', {}).get('display_name', 'unknown')
+                    playlist_id = playlist_data.get('id', '')
+                    
+                    progress_data.update({
+                        "current_track": current_track,
+                        "total_tracks": total_tracks,
+                        "parent": {
+                            "type": "playlist",
+                            "name": playlist_name,
+                            "owner": playlist_owner,
+                            "total_tracks": total_tracks,
+                            "url": f"https://open.spotify.com/playlist/{playlist_id}"
+                        }
+                    })
+                elif self.__parent == "album":
+                    album_name = self.__song_metadata.get('album', '')
+                    album_artist = self.__song_metadata.get('album_artist', self.__song_metadata.get('ar_album', ''))
+                    total_tracks = self.__song_metadata.get('nb_tracks', 0)
+                    current_track = getattr(self.__preferences, 'track_number', 0)
+                    album_id = self.__song_metadata.get('album_id', '')
+                    
+                    progress_data.update({
+                        "current_track": current_track,
+                        "total_tracks": total_tracks,
+                        "parent": {
+                            "type": "album",
+                            "title": album_name,
+                            "artist": album_artist,
+                            "total_tracks": total_tracks,
+                            "url": f"https://open.spotify.com/album/{album_id}"
+                        }
+                    })
                     
                 Download_JOB.report_progress(progress_data)
                 if retries >= max_retries or GLOBAL_RETRY_COUNT >= GLOBAL_MAX_RETRIES:
@@ -648,24 +685,83 @@ class EASY_DW:
         try:
             self.__convert_audio()
         except Exception as e:
-            logger.error(json.dumps({
-                "status": "retrying",
-                "action": "convert_audio",
-                "song": self.__song_metadata['music'],
-                "artist": self.__song_metadata['artist'],
-                "album": self.__song_metadata['album'],
-                "error": str(e)
-            }))
-            # If conversion fails, make sure to clean up the .ogg file
+            # Improve error message formatting
+            error_msg = str(e)
+            if "codec" in error_msg.lower():
+                error_msg = "Audio conversion error - Missing codec or unsupported format"
+            elif "ffmpeg" in error_msg.lower():
+                error_msg = "FFmpeg error - Audio conversion failed"
+            
+            # Create standardized error format
+            progress_data = {
+                "type": "track",
+                "status": "error",
+                "song": self.__song_metadata.get('music', ''),
+                "artist": self.__song_metadata.get('artist', ''),
+                "error": error_msg,
+                "url": self.__link
+            }
+            
+            # Add parent info based on parent type
+            if self.__parent == "playlist" and hasattr(self.__preferences, "json_data"):
+                playlist_data = self.__preferences.json_data
+                playlist_name = playlist_data.get('name', 'unknown')
+                total_tracks = playlist_data.get('tracks', {}).get('total', 'unknown')
+                current_track = getattr(self.__preferences, 'track_number', 0)
+                playlist_owner = playlist_data.get('owner', {}).get('display_name', 'unknown')
+                playlist_id = playlist_data.get('id', '')
+                
+                progress_data.update({
+                    "current_track": current_track,
+                    "total_tracks": total_tracks,
+                    "parent": {
+                        "type": "playlist",
+                        "name": playlist_name,
+                        "owner": playlist_owner,
+                        "total_tracks": total_tracks,
+                        "url": f"https://open.spotify.com/playlist/{playlist_id}"
+                    }
+                })
+            elif self.__parent == "album":
+                album_name = self.__song_metadata.get('album', '')
+                album_artist = self.__song_metadata.get('album_artist', self.__song_metadata.get('ar_album', ''))
+                total_tracks = self.__song_metadata.get('nb_tracks', 0)
+                current_track = getattr(self.__preferences, 'track_number', 0)
+                album_id = self.__song_metadata.get('album_id', '')
+                
+                progress_data.update({
+                    "current_track": current_track,
+                    "total_tracks": total_tracks,
+                    "parent": {
+                        "type": "album",
+                        "title": album_name,
+                        "artist": album_artist,
+                        "total_tracks": total_tracks,
+                        "url": f"https://open.spotify.com/album/{album_id}"
+                    }
+                })
+            
+            # Report the error
+            Download_JOB.report_progress(progress_data)
+            logger.error(f"Audio conversion error: {error_msg}")
+            
+            # If conversion fails, clean up the .ogg file
             if os.path.exists(self.__song_path):
                 os.remove(self.__song_path)
                 
+            # Try one more time
             time.sleep(retry_delay)
-            retry_delay += retry_delay_increase  # Use the custom retry delay increase
+            retry_delay += retry_delay_increase
             try:
                 self.__convert_audio()
             except Exception as conv_e:
-                # If conversion fails twice, clean up and raise
+                # If conversion fails twice, create a final error report
+                error_msg = "Audio conversion failed after retry"
+                progress_data["error"] = error_msg
+                progress_data["status"] = "error"
+                Download_JOB.report_progress(progress_data)
+                
+                # Clean up and raise
                 if os.path.exists(self.__song_path):
                     os.remove(self.__song_path)
                 raise conv_e
