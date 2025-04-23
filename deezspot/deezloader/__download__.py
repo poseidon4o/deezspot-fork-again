@@ -647,33 +647,8 @@ class EASY_DW:
                 
                 Download_JOB.report_progress(progress_data)
                 
-                # Implement real-time progress reporting during decryption
                 try:
-                    # Modified decryption with progress updates
-                    import time
-                    
-                    # Get file size for progress calculation
-                    total_size = 0
-                    chunks = []
-                    # First pass to calculate total size and store chunks
-                    for chunk in c_crypted_audio:
-                        total_size += len(chunk)
-                        chunks.append(chunk)
-                    
-                    if total_size > 0:
-                        # Second pass to decrypt with progress reporting
-                        bytes_processed = 0
-                        last_report_time = time.time()
-                        
-                        # Start decryption with real-time progress updates
-                        with open(self.__song_path, 'wb') as f:
-                            for chunk in chunks:
-                                bytes_processed += len(chunk)
-                                f.write(chunk)
-                                    
-                            # No real-time progress reporting in deezloader as requested
-                    
-                    # Now do the actual decryption using original method
+                    # Decrypt the file using the utility function
                     decryptfile(c_crypted_audio, self.__fallback_ids, self.__song_path)
                     logger.debug(f"Successfully decrypted track using {encryption_type} encryption")
                 except Exception as decrypt_error:
@@ -807,6 +782,7 @@ class EASY_DW:
                     if chunk:
                         size = f.write(chunk)
                         downloaded += size
+                        
                         # Download progress reporting could be added here
 
             # Build episode progress report
