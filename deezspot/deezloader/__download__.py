@@ -666,38 +666,10 @@ class EASY_DW:
                         # Start decryption with real-time progress updates
                         with open(self.__song_path, 'wb') as f:
                             for chunk in chunks:
-                                # Write the decrypted chunk
-                                f.write(chunk)
                                 bytes_processed += len(chunk)
-                                
-                                # Report progress every 0.5 seconds
-                                current_time = time.time()
-                                if current_time - last_report_time >= 0.5:
-                                    last_report_time = current_time
-                                    # Calculate percentage with two decimal places
-                                    percentage = round((bytes_processed / total_size) * 100, 2)
+                                f.write(chunk)
                                     
-                                    # Create real-time progress data
-                                    rt_progress_data = {
-                                        "type": "track",
-                                        "song": self.__song_metadata.get("music", ""),
-                                        "artist": self.__song_metadata.get("artist", ""),
-                                        "status": "real-time",
-                                        "url": progress_data["url"],
-                                        "time_elapsed": int((current_time - start_time) * 1000),
-                                        "progress": percentage
-                                    }
-                                    
-                                    # Add parent info if it was in the original progress data
-                                    if "parent" in progress_data:
-                                        rt_progress_data["parent"] = progress_data["parent"]
-                                    if "current_track" in progress_data:
-                                        rt_progress_data["current_track"] = progress_data["current_track"]
-                                    if "total_tracks" in progress_data:
-                                        rt_progress_data["total_tracks"] = progress_data["total_tracks"]
-                                        
-                                    # Report the real-time progress
-                                    Download_JOB.report_progress(rt_progress_data)
+                            # No real-time progress reporting in deezloader as requested
                     
                     # Now do the actual decryption using original method
                     decryptfile(c_crypted_audio, self.__fallback_ids, self.__song_path)
