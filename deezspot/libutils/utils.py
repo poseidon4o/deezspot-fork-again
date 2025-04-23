@@ -135,22 +135,32 @@ def apply_custom_format(format_str, metadata: dict, pad_tracks=True) -> str:
     """
     def replacer(match):
         key = match.group(1)
-        
+        raw_value = metadata.get(key)
+        # Friendly names for missing metadata
+        key_mappings = {
+            'ar_album': 'album artist',
+            'artist': 'artist',
+            'album': 'album',
+            'tracknum': 'track number',
+            'discnum': 'disc number',
+            'show': 'show',
+            'name': 'episode name',
+            'music': 'track title',
+            'isrc': 'ISRC',
+            'upc': 'UPC',
+        }
         # Special handling for tracknum to support padding
-        if key == 'tracknum' and pad_tracks:
+        if key == 'tracknum' and pad_tracks and raw_value not in (None, ''):
             try:
-                # Get the raw track number and try to format it
-                raw_value = metadata.get(key, '')
-                if raw_value:
-                    # Format track number with padding if it's numeric
-                    return var_excape(f"{int(raw_value):02d}")
+                return sanitize_name(f"{int(raw_value):02d}")
             except (ValueError, TypeError):
-                # If there's any error, fall back to the default handling
                 pass
-        
+        # Handle missing metadata with descriptive default
+        if raw_value in (None, ''):
+            friendly = key_mappings.get(key, key.replace('_', ' '))
+            return sanitize_name(f"Unknown {friendly}")
         # Default handling for all other keys
-        return var_excape(str(metadata.get(key, '')))
-        
+        return sanitize_name(str(raw_value))
     return re.sub(r'%(\w+)%', replacer, format_str)
 
 def __get_dir(song_metadata, output_dir, method_save, custom_dir_format=None, pad_tracks=True):
@@ -191,6 +201,9 @@ def __get_dir(song_metadata, output_dir, method_save, custom_dir_format=None, pa
             else:
                 dir_name = "Unknown"
     
+    # Prevent absolute paths and sanitize each directory segment
+    dir_name = dir_name.strip('/')
+    dir_name = '/'.join(sanitize_name(seg) for seg in dir_name.split('/') if seg)
     final_dir = join(output_dir, dir_name)
     if not isdir(final_dir):
         makedirs(final_dir)
@@ -250,6 +263,8 @@ def set_path(
             elif method_save == 3:
                 song_name = f"{discnum}|{tracknum} - {music} - {artist}"
     
+    # Sanitize song_name to remove invalid chars and prevent '/'
+    song_name = sanitize_name(song_name)
     # Truncate to avoid filesystem limits
     max_length = 255 - len(output_dir) - len(file_format)
     song_name = song_name[:max_length]
