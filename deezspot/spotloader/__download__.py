@@ -324,7 +324,9 @@ class EASY_DW:
             logger.error(f"Download failed: {str(e)}")
             traceback.print_exc()
             raise e
-
+        
+        # Write metadata tags so subsequent skips work
+        write_tags(self.__c_track)
         return self.__c_track
 
     def track_exists(self, title, album):
@@ -663,7 +665,7 @@ class EASY_DW:
                     "convert_to": self.__convert_to
                 }
                 
-                # Add parent info based on parent type - similar to other status messages
+                # Add parent info based on parent type
                 if self.__parent == "playlist" and hasattr(self.__preferences, "json_data"):
                     playlist_data = self.__preferences.json_data
                     playlist_name = playlist_data.get('name', 'unknown')
@@ -797,6 +799,7 @@ class EASY_DW:
                 raise conv_e
 
         self.__write_track()
+        # Write metadata tags so subsequent skips work
         write_tags(self.__c_track)
         # Create done status report using the same format as progress status
         progress_data = {
@@ -995,6 +998,7 @@ class EASY_DW:
                 raise conv_e
                 
         self.__write_episode()
+        # Write metadata tags so subsequent skips work
         write_tags(self.__c_episode)
         return self.__c_episode
 
@@ -1213,7 +1217,7 @@ class DW_PLAYLIST:
             c_preferences.song_metadata = c_song_metadata
             c_preferences.json_data = self.__json_data  # Pass playlist data for reporting
             c_preferences.track_number = idx + 1  # Track number in the playlist
-            
+
             # Use track-level reporting through EASY_DW
             track = EASY_DW(c_preferences, parent='playlist').easy_dw()
 
