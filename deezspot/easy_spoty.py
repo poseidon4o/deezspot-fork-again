@@ -177,7 +177,7 @@ class Spo:
         return episode_json
 
     @classmethod
-    def search(cls, query, search_type='track', limit=10, client_id=None, client_secret=None):
+    def search(cls, query, search_type='track', limit=10, offset=0, client_id=None, client_secret=None):
         """
         Search for tracks, albums, artists, or playlists.
         
@@ -192,7 +192,7 @@ class Spo:
             dict: Search results
         """
         api = cls.__get_api(client_id, client_secret)
-        search = api.search(q=query, type=search_type, limit=limit)
+        search = api.search(q=query, type=search_type, limit=limit, offset=offset)
         return search
 
     @classmethod
